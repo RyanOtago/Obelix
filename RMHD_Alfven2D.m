@@ -12,7 +12,7 @@ function RMHD_Alfven2D
 
 clear all;
 
-va = 1;        % Alven velocity         %%% This should be reasonably large?, No everything else should be small, we chose O(v_A)~1
+va = 1;        % Alven velocity
 nu = 0.001;
 LX = 2*pi;     % Box-size (x-direction)
 LY = 2*pi;     % Box-size (y-direction)
@@ -33,7 +33,7 @@ t=0.;
 kx = (2*I*pi/LX)*[0:((NX/2)-1)  -(NX/2):-1];    % [0, 1, ..., NX/2-1, -NX/2, -NX/2+1, ..., -1]    % This is a formatting convention
 ky = (2*I*pi/LY)*[0:((NY/2)-1)  -(NY/2):-1];
 % kz = 1;     %%% !!! Should be kz >> k_perp_max? In order for
-% k_perp/k_para ~ epsilon assumption to hold    Doesn't matter for 2D
+% k_perp/k_para ~ epsilon assumption to hold    (Doesn't matter for 2D)
 
 [KX, KY] = ndgrid(kx, ky);
 
