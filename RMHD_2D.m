@@ -13,8 +13,8 @@ clear all;
 
 %%%% Parameters %%%%
 
-va = 1;        % Alven velocity         %%% This should be reasonably large?, No everything else should be small, we chose O(v_A)~1
-nu = 0.001;    % Viscosity
+va = 5;        % Alven velocity         %%% This should be reasonably large?, No everything else should be small, we chose O(v_A)~1
+nu = 0.0001;    % Viscosity
 
 LX = 2*pi;     % Box-size (x-direction)
 LY = 2*pi;     % Box-size (y-direction)
@@ -45,14 +45,13 @@ k2_poisson(1,1) = 1;          % Fixed Laplacian in Fourier space for Poisson's e
 
 %%%% Initial Condition %%%%
 
-[i,j]=ndgrid((1:NX)*dx,(1:NY)*dy);
-z_plus=exp(-((i-(LX/2)).^2+(j-(3*LY/8)).^2)/(0.04));
-z_minus=exp(-((i-(LX/2)).^2+(j-(3*LY/8)).^2)/(0.4));
+        [i,j]=ndgrid((1:NX)*dx,(1:NY)*dy);
+        z_plus=fft2(cos(3*pi*j/LX));
+        z_minus = fft2(sin(4*pi*i/LX));
 
 k=0;
 while t<TF
     k=k+1;
-    
     Lap_z_plus = k2_poisson.*z_plus;        %%% Should this be k2_poisson or k2_perp?
     Lap_z_minus = k2_poisson.*z_minus;      %%%                 ""
     
@@ -74,24 +73,29 @@ while t<TF
     z_minus_new = (Lap_z_minus_new./k2_poisson).*exp_correct;
     
     t=t+dt;
-    
+
     %%% Plotting %%%        !!! What variables will I need to plot for RMHD? !!!
+    
     if (k==TSCREEN)
+        
         % Go back to real space for plotting
         zp = real(ifft2(z_plus_new));
         zm = real(ifft2(z_minus_new));
-        
-        subplot(2,1,1)
-        
+
         %%% Contour Plot of Zeta_Plus
+        subplot(2,1,1)
         contourf(zp',50,'LineColor','none'); colorbar; shading flat;        %If matrix dimesions don't agree, likely exploded to matrix of NaNs
         % use imagesc (with transpose matrix) instead
         title(num2str(t));
+        pbaspect([LX LY 1])
         
         %%% Contour Plot of Zeta_minus
         subplot(2,1,2)
         contourf(zm',50,'LineColor','none'); colorbar; shading flat;
+        pbaspect([LX LY 1])
+        
         drawnow
+
         
         k=0;
     end
