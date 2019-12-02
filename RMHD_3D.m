@@ -19,13 +19,13 @@ LX = 2*pi;     % Box-size (x-direction)
 LY = 2*pi;     % Box-size (y-direction)
 LZ = 2*pi;     % Box-size (z-direction)     %Should this scale differently to LX and LY?
 
-NX = 64;      % Resolution in x
-NY = 64;      % Resolution in y
-NZ = 64;      % Resolution in z
+NX = 128;      % Resolution in x
+NY = 128;      % Resolution in y
+NZ = 128;      % Resolution in z
 
 dt = 1e-3;     % Time Step              !!! Think about CFL conditions !!!
 TF = 10.0;    % Final Time
-TSCREEN = 500; % Sreen Update Interval Count (NOTE: plotting is usually slow)
+TSCREEN = 10; % Sreen Update Interval Count (NOTE: plotting is usually slow)
 
 %%% !!! We need an Initial Condition !!! %%%
 
@@ -65,8 +65,8 @@ while t<TF
     
     % Computes Poisson Brackets (RHS of Schekochihin-09 Eq (21))
     % NL -> "Non-Linear"
-    NL_Sup = -0.5.*(Poisson3D(z_plus, Lap_z_minus, KX, KY, dealias) + Poisson3D(z_minus, Lap_z_plus, KX, KY, dealias)); 
-    NL_Lap = k2_perp.*Poisson3D(z_plus, z_minus, KX, KY, dealias);
+    NL_Sup = -0.5.*(Poisson(z_plus, Lap_z_minus, KX, KY) + Poisson(z_minus, Lap_z_plus, KX, KY)).*dealias; 
+    NL_Lap = k2_perp.*Poisson(z_plus, z_minus, KX, KY).*dealias;
     
     NL_plus = dt.*(NL_Sup - NL_Lap);
     NL_minus = dt.*(NL_Sup + NL_Lap);
@@ -96,13 +96,13 @@ while t<TF
         subplot(2,1,1)
         
         %%% Contour Plot of Zeta_Plus
-        contourf(zp',50,'LineColor','none'); colorbar; shading flat;        %If matrix dimesions don't agree, likely exploded to matrix of NaNs
+        contourf(zp.',50,'LineColor','none'); colorbar; shading flat;        %If matrix dimesions don't agree, likely exploded to matrix of NaNs
         % use imagesc (with transpose matrix) instead
         title(num2str(t));
         
         %%% Contour Plot of Zeta_minus
         subplot(2,1,2)
-        contourf(zm',50,'LineColor','none'); colorbar; shading flat;
+        contourf(zm.',50,'LineColor','none'); colorbar; shading flat;
         drawnow
         
         k=0;
