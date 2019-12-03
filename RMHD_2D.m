@@ -6,29 +6,33 @@ function RMHD_2D
 %%%                               %%%
 %%%   Uses Elsasser Formulation   %%%
 %%%   for an Alfven Wave in a     %%%
-%%%   2D Torus                    %%%
+%%%   2D LX x LY Torus            %%%
 %%%                               %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear all;
 
 %%%% Parameters %%%%
 
-va = 5;        % Alven velocity         %%% This should be reasonably large?, No everything else should be small, we chose O(v_A)~1
-nu = 0.0001;    % Viscosity
+va = 15;        % Alven velocity         %%% This should be reasonably large?, No everything else should be small, we chose O(v_A)~1
+nu = 1e-3;    % Viscosity
 
 LX = 2*pi;     % Box-size (x-direction)
 LY = 2*pi;     % Box-size (y-direction)
+
 NX = 128;      % Resolution in x
 NY = 128;      % Resolution in y
 
-dt = 1e-3;     % Time Step              !!! Think about CFL conditions !!!
-TF = 10.0;     % Final Time
+dt = 1e-4;     % Time Step              !!! Think about CFL conditions !!!
+TF = 0.5;     % Final Time
 TSCREEN = 500; % Sreen Update Interval Count (NOTE: plotting is usually slow)
+time = [0:dt:TF];
+E_plus = zeros(1,length(time));
+E_minus = zeros(1,length(time));
 
 I=sqrt(-1);
 dx = LX/NX;
 dy = LY/NY;
-t=0.;
+t=0.0;
 
 %%%% Initialise wavevector grid %%%%
 
@@ -44,14 +48,18 @@ k2_poisson = k2_perp;
 k2_poisson(1,1) = 1;          % Fixed Laplacian in Fourier space for Poisson's equation   % Because first entry of k2_perp is 0
 
 %%%% Initial Condition %%%%
+%%%% !!! Ensure z_plus and z_minus are in Fourier space !!! %%%%
 
         [i,j]=ndgrid((1:NX)*dx,(1:NY)*dy);
-        z_plus=fft2(cos(3*pi*j/LX));
-        z_minus = fft2(sin(4*pi*i/LX));
+        z_plus = fft2(cos(2*pi*i/LX));
+        z_minus = 0;%fft2(random('unif',-0.5,0.5,NX,NY).*sin(4*pi*i/LX));         %%% Make sure either is not constant otherwise there will be no time evolution %%%
 
 k=0;
+n=1;
 while t<TF
     k=k+1;
+
+    
     Lap_z_plus = k2_poisson.*z_plus;        %%% Should this be k2_poisson or k2_perp?
     Lap_z_minus = k2_poisson.*z_minus;      %%%                 ""
     
@@ -72,7 +80,16 @@ while t<TF
     z_plus_new = (Lap_z_plus_new./k2_poisson).*exp_correct;
     z_minus_new = (Lap_z_minus_new./k2_poisson).*exp_correct;
     
+    
     t=t+dt;
+    
+    %%% Energy %%%
+    
+    E_plus_grid = abs(k2_perp).*abs(z_plus_new);    %%% !!! %%%
+    E_minus_grid = abs(k2_perp).*abs(z_minus_new);
+    
+    E_plus(n) = sum(sum(ifft2(E_plus_grid).*dealias));
+    E_minus(n) = sum(sum(ifft2(E_minus_grid).*dealias));
 
     %%% Plotting %%%        !!! What variables will I need to plot for RMHD? !!!
     
@@ -83,14 +100,14 @@ while t<TF
         zm = real(ifft2(z_minus_new));
 
         %%% Contour Plot of Zeta_Plus
-        subplot(2,1,1)
+        subplot(1,2,1)
         contourf(zp',50,'LineColor','none'); colorbar; shading flat;        %If matrix dimesions don't agree, likely exploded to matrix of NaNs
         % use imagesc (with transpose matrix) instead
         title(num2str(t));
         pbaspect([LX LY 1])
         
         %%% Contour Plot of Zeta_minus
-        subplot(2,1,2)
+        subplot(1,2,2)
         contourf(zm',50,'LineColor','none'); colorbar; shading flat;
         pbaspect([LX LY 1])
         
@@ -102,4 +119,10 @@ while t<TF
     
     z_plus = z_plus_new;
     z_minus = z_minus_new;
+    n=n+1;
 end
+figure(2)
+plot(time, E_plus, time, E_minus)
+legend('\zeta^{+}', '\zeta^{-}')
+title('Conserved quantities (in theory)')
+xlabel('Time')
