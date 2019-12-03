@@ -13,8 +13,8 @@ clear all;
 
 %%%% Parameters %%%%
 
-va = 15;        % Alven velocity         %%% This should be reasonably large?, No everything else should be small, we chose O(v_A)~1
-nu = 1e-3;    % Viscosity
+va = 1;       % Alven velocity         %%% This should be reasonably large?, No everything else should be small, we chose O(v_A)~1
+nu = 1e-4;     % Viscosity
 
 LX = 2*pi;     % Box-size (x-direction)
 LY = 2*pi;     % Box-size (y-direction)
@@ -23,9 +23,10 @@ NX = 128;      % Resolution in x
 NY = 128;      % Resolution in y
 
 dt = 1e-4;     % Time Step              !!! Think about CFL conditions !!!
-TF = 0.5;     % Final Time
-TSCREEN = 500; % Sreen Update Interval Count (NOTE: plotting is usually slow)
+TF = 0.1;     % Final Time
+TSCREEN = 500; % Sreen Update Interval Count
 time = [0:dt:TF];
+
 E_plus = zeros(1,length(time));
 E_minus = zeros(1,length(time));
 
@@ -38,9 +39,7 @@ t=0.0;
 
 kx = (2*I*pi/LX)*[0:((NX/2)-1)  -(NX/2):-1];    % [0, 1, ..., NX/2-1, -NX/2, -NX/2+1, ..., -1]    % This is a formatting convention
 ky = (2*I*pi/LY)*[0:((NY/2)-1)  -(NY/2):-1];
-
 [KX, KY] = ndgrid(kx, ky);
-
 dealias = abs(KX) < (1/3)*NX & abs(KY) < (1/3)*NY;            % Cutting of frequencies using the 2/3 rule   (2/3)*(N/2)
 
 k2_perp = KX.^2 + KY.^2;      % Laplacian in Fourier space
@@ -50,9 +49,9 @@ k2_poisson(1,1) = 1;          % Fixed Laplacian in Fourier space for Poisson's e
 %%%% Initial Condition %%%%
 %%%% !!! Ensure z_plus and z_minus are in Fourier space !!! %%%%
 
-        [i,j]=ndgrid((1:NX)*dx,(1:NY)*dy);
-        z_plus = fft2(cos(2*pi*i/LX));
-        z_minus = 0;%fft2(random('unif',-0.5,0.5,NX,NY).*sin(4*pi*i/LX));         %%% Make sure either is not constant otherwise there will be no time evolution %%%
+[i,j]=ndgrid((1:NX)*dx,(1:NY)*dy);
+z_plus = fft2(sin((2*pi*j)./LY));
+z_minus = fft2(cos((6*pi*i)./LX));         %%% Make sure either is not constant otherwise there will be no time evolution %%%
 
 k=0;
 n=1;
@@ -65,8 +64,8 @@ while t<TF
     
     % Computes Poisson Brackets (RHS of Schekochihin-09 Eq (21))
     % NL -> "Non-Linear"
-    NL_Sup = -0.5.*(Poisson(z_plus, Lap_z_minus, KX, KY) + Poisson(z_minus, Lap_z_plus, KX, KY)).*dealias; 
-    NL_Lap = k2_perp.*Poisson(z_plus, z_minus, KX, KY).*dealias;
+    NL_Sup = -0.5.*((Poisson(z_plus, Lap_z_minus, KX, KY) + Poisson(z_minus, Lap_z_plus, KX, KY)).*dealias); 
+    NL_Lap = k2_perp.*(Poisson(z_plus, z_minus, KX, KY).*dealias);
     
     NL_plus = dt.*(NL_Sup - NL_Lap);
     NL_minus = dt.*(NL_Sup + NL_Lap);
@@ -85,13 +84,13 @@ while t<TF
     
     %%% Energy %%%
     
-    E_plus_grid = abs(k2_perp).*abs(z_plus_new);    %%% !!! %%%
-    E_minus_grid = abs(k2_perp).*abs(z_minus_new);
+    E_plus_grid = abs(k2_poisson).*(abs(z_plus_new).^2);
+    E_minus_grid = abs(k2_poisson).*(abs(z_minus_new).^2);
     
-    E_plus(n) = sum(sum(ifft2(E_plus_grid).*dealias));
-    E_minus(n) = sum(sum(ifft2(E_minus_grid).*dealias));
-
-    %%% Plotting %%%        !!! What variables will I need to plot for RMHD? !!!
+    E_plus(n) = sum(sum(E_plus_grid));
+    E_minus(n) = sum(sum(E_minus_grid));    % Large spikes were a result of unnecesary inverse FT of Energy
+    
+    %%% Plotting %%%
     
     if (k==TSCREEN)
         
@@ -112,15 +111,17 @@ while t<TF
         pbaspect([LX LY 1])
         
         drawnow
-
-        
         k=0;
     end
     
     z_plus = z_plus_new;
     z_minus = z_minus_new;
+    disp(n)
     n=n+1;
 end
+
+%%% Energy Plot %%%
+
 figure(2)
 plot(time, E_plus, time, E_minus)
 legend('\zeta^{+}', '\zeta^{-}')
