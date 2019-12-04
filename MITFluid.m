@@ -21,8 +21,8 @@ NX = 128;      % Resolution in x
 NY = 128;      % Resolution in y
 
 dt = 1e-3;     % Time Step  (Think about CFL conditions)
-TF = 20.0;    % Final Time
-TSCREEN = 10; % Sreen Update Interval Time
+TF = 10.0;    % Final Time
+TSCREEN = 5000; % Sreen Update Interval Time
 
 time = [0:dt:TF];
 E = zeros(1,length(time));
@@ -44,8 +44,8 @@ ky = (2*I*pi/LY)*[0:((NY/2)-1)  -(NY/2):-1];
 dealias = abs(KX) < (1/3)*NX & abs(KY) < (1/3)*NY;            % Cutting of frequencies using the 2/3 rule   (2/3)*(N/2)
 
 k2_perp = KX.^2 + KY.^2;      % Laplacian in Fourier space
-ksquare_poisson = k2_perp;    
-ksquare_poisson(1,1) = 1;     % Fixed Laplacian in Fourier space for Poisson's equation   % Because first entry is 0    %Should this be -1?
+k2_poisson = k2_perp;    
+k2_poisson(1,1) = 1;     % Fixed Laplacian in Fourier space for Poisson's equation   % Because first entry is 0    %Should this be -1?
 
 %%%%%%% CHECK THIS %%%%%%%%%%
 %%% I.C. = Random always blows up?! %%%
@@ -62,12 +62,12 @@ switch lower(initial_condition)
     case {1}
         disp('Initial Condition: Simple Vortices')
         [i,j]=ndgrid((1:NX)*dx,(1:NY)*dy);
-        psi=0.01*sin((2*pi*i)/LX + (3*pi*j)/LY);
+        psi=0.1*sin(i).*cos(j).^2;
   
     case {2}
         disp('Initial Condition: Random')
         psi_initial=random('unif',-0.5,0.5,NX,NY);      % Change w to psi?  % Need to make sure the initial condition is real (especially if initialising from k-space)
-         wh_initial = k2_perp.*fft2(psi_initial);
+        wh_initial = k2_perp.*fft2(psi_initial);
          psi = real(ifft2(wh_initial)).*dealias;
     otherwise
         disp('!!! Unknown initial conditions !!!');
@@ -80,11 +80,11 @@ w_hat = k2_perp.*fft2(psi);    % Finds initial vorticity %%% Why don't we have t
 
 k=0;
 n=1;
-while t<TF
+for i = [1:numel(time)]
     k=k+1;
     
     % Compute the stream function and get the velocity and gradient of vorticity
-    psi_hat = -w_hat./ksquare_poisson;  % Solve Poisson's Equation
+    psi_hat = -w_hat./k2_poisson;  % Solve Poisson's Equation
     
     u   = real(ifft2( KY.*psi_hat));    % Compute  y derivative of stream function ==> u
     v   = real(ifft2(-KX.*psi_hat));    % Compute -x derivative of stream function ==> v
@@ -101,12 +101,12 @@ while t<TF
     % Compute Solution at the next step
     
     w_hat_new = -dt*conv_hat + w_hat;
-    w_hat_new = w_hat_new*exp(dt*nu*k2_perp);
+    w_hat_new = w_hat_new.*exp(dt*nu*k2_perp);
     
     % Crank-Nicolson
     %w_hat_new = ((1/dt + 0.5*nu*k2_perp)./(1/dt - 0.5*nu*k2_perp)).*w_hat - (1./(1/dt - 0.5*nu*k2_perp)).*conv_hat;
     
-    E_grid = abs(k2_perp).*(abs(w_hat_new).^2);
+    E_grid = abs((w_hat_new.^2)./abs(k2_poisson));
     E(n) = sum(sum(E_grid))*(dA/N);
     
     t=t+dt;
@@ -115,6 +115,7 @@ while t<TF
     if (k==TSCREEN)
         % Go back to real space for plotting
         w = real(ifft2(w_hat_new));
+        figure(1)
         contourf(w',50,'LineColor','none'); colorbar; shading flat;        %If matrix dimesions don't agree, likely exploded to matrix of NaNs
         % use imagesc (with transpose matrix) instead (What is difference between imagesc and contourf
         title(num2str(t));
