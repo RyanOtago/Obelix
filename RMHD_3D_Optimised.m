@@ -65,9 +65,9 @@ exp_correct = exp(dt*nu*k2);  % !!! Should this be k2 or k2_perp ??? (Seems like
 
 Lap_z_plus = k2_perp.*fftn(1);
 Lap_z_minus = k2_perp.*fftn(0);
-
-%% Solver %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic
+%% Solver %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 k=0;
 n=1;
 for i = [1:length(time)]
@@ -77,8 +77,21 @@ for i = [1:length(time)]
     z_minus = Lap_z_minus./k2_poisson;
 
     % Computes Poisson Brackets (RHS of Schekochihin-09 Eq (21))
-    NL_Sup = -(0.5).*(Poisson(z_plus, Lap_z_minus, KX, KY) + Poisson(z_minus, Lap_z_plus, KX, KY).*dealias); 
-    NL_Lap = -(0.5).*k2_perp.*Poisson(z_plus, z_minus, KX, KY).*dealias;
+    zp_x = real(ifft2(KX.*z_plus));
+    zm_x = real(ifft2(KX.*z_minus));
+    zp_y = real(ifft2(KY.*z_plus));
+    zm_y = real(ifft2(KY.*z_minus));
+    Lzp_x = real(ifft2(KX.*Lap_z_plus));
+    Lzm_x = real(ifft2(KX.*Lap_z_minus));
+    Lzp_y = real(ifft2(KY.*Lap_z_plus));
+    Lzm_y = real(ifft2(KY.*Lap_z_minus));
+    
+    PB_zp_Lzm = fft2((zp_x.*Lzm_y) - (zp_y.*Lzm_x));
+    PB_zm_Lzp = fft2((zm_x.*Lzp_y) - (zm_y.*Lzp_x));
+    PB_zp_zm  = fft2((zp_x.*zm_y)  - (zp_y.*zm_x));
+    
+    NL_Sup = -(0.5).*(PB_zp_Lzm + PB_zm_Lzp).*dealias;
+    NL_Lap = -(0.5).*k2_perp.*PB_zp_zm.*dealias;
     
     NL_plus = NL_Sup - NL_Lap;
     NL_minus = NL_Sup + NL_Lap;

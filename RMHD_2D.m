@@ -18,12 +18,12 @@ nu = 1e-3;     % Viscosity
 LX = 2*pi;     % Box-size (x-direction)
 LY = 2*pi;     % Box-size (y-direction)
 
-NX = 128;      % Resolution in x
-NY = 128;      % Resolution in y
+NX = 64;      % Resolution in x
+NY = 64;      % Resolution in y
 N = NX*NY;
 
 dt = 1e-3;     % Time Step              !!! Think about CFL conditions !!!
-TF = 30;       % Final Time
+TF = 10;       % Final Time
 TSCREEN = 500; % Sreen Update Interval Count
 
 time = [dt:dt:TF];
@@ -61,16 +61,18 @@ Lap_z_minus = k2_perp.*fft2(0.3*sin(2*pi*i/LX - 2*pi*j/LY));
 %% Solver %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 k=0;
 n=1;
+tic
 for i = [1:length(time)]
     k=k+1;
 
     z_plus = Lap_z_plus./k2_poisson;        
     z_minus = Lap_z_minus./k2_poisson;      
-    
+
     % Computes Poisson Brackets (RHS of Schekochihin-09 Eq (21))
     % NL -> "Non-Linear"
-    NL_Sup = -(0.5).*(Poisson(z_plus, Lap_z_minus, KX, KY) + Poisson(z_minus, Lap_z_plus, KX, KY).*dealias); 
-    NL_Lap = -(0.5)*k2_perp.*Poisson(z_plus, z_minus, KX, KY).*dealias;
+    NL_Sup = -(0.5).*(Poisson(z_plus, Lap_z_minus, KX, KY) + ...
+            Poisson(z_minus, Lap_z_plus, KX, KY).*dealias); 
+    NL_Lap = -(0.5).*k2_perp.*Poisson(z_plus, z_minus, KX, KY).*dealias;
     
     NL_plus = NL_Sup - NL_Lap;
     NL_minus = NL_Sup + NL_Lap;
@@ -92,8 +94,8 @@ for i = [1:length(time)]
     E_plus_grid = (abs(Lap_z_plus_new).^2)./abs(k2_poisson);
     E_minus_grid = (abs(Lap_z_minus_new).^2)./abs(k2_poisson);
     
-    E_plus(n) = sum(sum(E_plus_grid))*(grid_int);
-    E_minus(n) = sum(sum(E_minus_grid))*(grid_int);   
+    E_plus(n) = sum(E_plus_grid(:))*(grid_int);
+    E_minus(n) = sum(E_minus_grid(:))*(grid_int);   
     
     t=t+dt;
     
@@ -129,7 +131,7 @@ for i = [1:length(time)]
 end
 
 %% Energy Plot %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+toc
 figure(2)
 subplot(1,2,1)
 plot(time, E_plus)

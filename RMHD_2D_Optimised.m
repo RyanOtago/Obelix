@@ -1,4 +1,4 @@
-function RMHD_2D
+function RMHD_2D_Optimised
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%                               %%%
@@ -11,30 +11,31 @@ function RMHD_2D
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear all;
 
-%%% Parameters %%%
+%% Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 nu = 1e-3;     % Viscosity
 
 LX = 2*pi;     % Box-size (x-direction)
 LY = 2*pi;     % Box-size (y-direction)
 
-NX = 128;      % Resolution in x
-NY = 128;      % Resolution in y
+NX = 64;      % Resolution in x
+NY = 64;      % Resolution in y
+N = NX*NY;
 
-dt = 1e-4;     % Time Step              !!! Think about CFL conditions !!!
-TF = 0.1;      % Final Time
-TSCREEN = 50; % Sreen Update Interval Count
+dt = 1e-3;     % Time Step              !!! Think about CFL conditions !!!
+TF = 10;       % Final Time
+TSCREEN = 500; % Sreen Update Interval Count
 
-time = [0:dt:TF];
+time = [dt:dt:TF];
 E_plus = zeros(1,length(time));
 E_minus = zeros(1,length(time));
 
 I=sqrt(-1);
 dx = LX/NX;
 dy = LY/NY;
-N = NX*NY;
 dA = dx*dy;
-grid_int = dA/N;
+
+grid_int = dA/N;    % Discrete integral normalisation factor
 t=0.0;
 
 %%%% Initialise wavevector grid %%%%
@@ -47,48 +48,69 @@ dealias = abs(KX) < (1/3)*NX & abs(KY) < (1/3)*NY;            % Cutting of frequ
 k2_perp = KX.^2 + KY.^2;      % Laplacian in Fourier space
 k2_poisson = k2_perp;    
 k2_poisson(1,1) = 1;          % Fixed Laplacian in Fourier space for Poisson's equation   % Because first entry of k2_perp is 0
+exp_correct = exp(dt*nu*k2_perp);
 
-%%%% Initial Condition %%%%
-%%%% !!! Ensure z_plus and z_minus are in Fourier space !!! %%%%
-
+%% Initial Condition %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%% !!! Ensure Lap_z_plus and Lap_z_minus are in Fourier space !!! %%%%
 [i,j]=ndgrid((1:NX)*dx,(1:NY)*dy);
-Lap_z_plus = k2_perp.*fft2(sin((2*pi*j + 2*pi*i)./LY));
-Lap_z_minus = k2_perp.*fft2(cos((8*pi*i + 2*pi*j)./LX));         %%% Make sure either is not constant otherwise there will be no time evolution %%%
 
+%Lap_z_plus = k2_perp.*fft2(0.2*sin(2*pi*i/LX + 2*pi*j/LY));
+Lap_z_plus = k2_perp.*fft2(0.2*(exp(-((i-(LX/2)).^2+(j-(LY/2)).^2)/(0.02))+exp(-((i-(LX/4)).^2+(j-(2*LY/8)).^2)/(0.8))-0.5*exp(-((i-(7*LX/8)).^2+(j-(5*LY/8)).^2)/(0.4))));% Change w to psi?
+Lap_z_minus = k2_perp.*fft2(0.3*sin(2*pi*i/LX - 2*pi*j/LY));
+
+%% Solver %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 k=0;
 n=1;
-while t<TF
+tic;
+for i = [1:length(time)]
     k=k+1;
-    
+
     z_plus = Lap_z_plus./k2_poisson;        
     z_minus = Lap_z_minus./k2_poisson;      
-    
+
     % Computes Poisson Brackets (RHS of Schekochihin-09 Eq (21))
     % NL -> "Non-Linear"
-    NL_Sup = -0.5.*((Poisson(z_plus, Lap_z_minus, KX, KY) + Poisson(z_minus, Lap_z_plus, KX, KY)).*dealias); 
-    NL_Lap = k2_perp.*(Poisson(z_plus, z_minus, KX, KY).*dealias);
+    zp_x = real(ifft2(KX.*z_plus));
+    zm_x = real(ifft2(KX.*z_minus));
+    zp_y = real(ifft2(KY.*z_plus));
+    zm_y = real(ifft2(KY.*z_minus));
+    Lzp_x = real(ifft2(KX.*Lap_z_plus));
+    Lzm_x = real(ifft2(KX.*Lap_z_minus));
+    Lzp_y = real(ifft2(KY.*Lap_z_plus));
+    Lzm_y = real(ifft2(KY.*Lap_z_minus));
+    
+    PB_zp_Lzm = fft2((zp_x.*Lzm_y) - (zp_y.*Lzm_x));
+    PB_zm_Lzp = fft2((zm_x.*Lzp_y) - (zm_y.*Lzp_x));
+    PB_zp_zm  = fft2((zp_x.*zm_y)  - (zp_y.*zm_x));
+    
+    
+    NL_Sup = -(0.5).*(PB_zp_Lzm + PB_zm_Lzp).*dealias;
+    NL_Lap = -(0.5).*k2_perp.*PB_zp_zm.*dealias;
     
     NL_plus = NL_Sup - NL_Lap;
     NL_minus = NL_Sup + NL_Lap;
        
     %%% Compute Solution at the next step %%%
     
-    Lap_z_plus_new = dt*NL_plus + Lap_z_plus;
-    Lap_z_minus_new = dt*NL_minus + Lap_z_minus;
+    Lap_z_plus_NL = dt*NL_plus + Lap_z_plus;
+    Lap_z_minus_NL = dt*NL_minus + Lap_z_minus;
     
-    exp_correct = exp(dt*nu*k2_perp);
-    Lap_z_plus_new = Lap_z_plus_new.*exp_correct;
-    Lap_z_minus_new = Lap_z_minus_new.*exp_correct;
+
+    Lap_z_plus_new = Lap_z_plus_NL.*exp_correct;
+    Lap_z_minus_new = Lap_z_minus_NL.*exp_correct;
     
-    t=t+dt;
+    Lap_z_plus_new(1,1) = 0;
+    Lap_z_minus_new(1,1) = 0;
     
     %%% Energy %%%
     
-    E_plus_grid = abs(k2_perp).*(abs(Lap_z_plus_new./k2_poisson).^2);
-    E_minus_grid = abs(k2_perp).*(abs(Lap_z_minus_new./k2_poisson).^2);
+    E_plus_grid = (abs(Lap_z_plus_new).^2)./abs(k2_poisson);
+    E_minus_grid = (abs(Lap_z_minus_new).^2)./abs(k2_poisson);
     
-    E_plus(n) = sum(sum(E_plus_grid))*(grid_int);
-    E_minus(n) = sum(sum(E_minus_grid))*(grid_int);    % Large spikes were a result of unnecesary inverse FT of Energy
+    E_plus(n) = sum(E_plus_grid(:))*(grid_int);
+    E_minus(n) = sum(E_minus_grid(:))*(grid_int);   
+    
+    t=t+dt;
     
     %%% Plotting %%%
     
@@ -97,7 +119,8 @@ while t<TF
         % Go back to real space for plotting
         zp = real(ifft2(Lap_z_plus_new./k2_poisson));
         zm = real(ifft2(Lap_z_minus_new./k2_poisson));
-
+        
+        figure(1)
         %%% Contour Plot of Zeta_Plus
         subplot(1,2,1)
         contourf(zp',50,'LineColor','none'); colorbar; shading flat;        %If matrix dimesions don't agree, likely exploded to matrix of NaNs
@@ -119,11 +142,15 @@ while t<TF
     Lap_z_minus = Lap_z_minus_new;
     n=n+1;
 end
-
-%%% Energy Plot %%%
+toc
+%% Energy Plot %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 figure(2)
-plot(time, E_plus, time, E_minus)
-legend('\zeta^{+}', '\zeta^{-}')
-title('Conserved quantities (in theory)')
+subplot(1,2,1)
+plot(time, E_plus)
+title('\zeta^+ "Energy"')
+xlabel('Time')
+subplot(1,2,2)
+plot(time, E_minus)
+title('\zeta^- "Energy"')
 xlabel('Time')
