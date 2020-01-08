@@ -14,10 +14,10 @@ function RMHD_3D
 SlowModes        = 1;         % Calculate evolution of compressive modes in run
 TF               = 1;         % Final Time
 
-VariableTimeStep = 0;         % Enable variable time step, else dt must be defined below
+VariableTimeStep = 1;         % Enable variable time step, else dt must be defined below
 % VARIABLE time step
 Cutoff           = 100000;     % Maximum number of iterations for variable time step
-CFL              = 0.014;      % Courant Number
+CFL              = 0.13;      % Courant Number
 % FIXED time step
 dt               = 1e-3;      % Time Step (For fixed time step runs)
 
@@ -59,7 +59,6 @@ end
 dx = LX/NX;
 dy = LY/NY;
 dz = LZ/NZ;
-min_mesh = min([dx dy dz]);
 dV = dx*dy*dz;
 
 I=sqrt(-1);
@@ -80,6 +79,8 @@ k2_perp = KX.^2 + KY.^2;      % (Perpendicular) Laplacian in Fourier space
 k2_poisson = k2_perp;
 k2_poisson(1,1,:) = 1;        % Fixed Laplacian in F.S. for Poisson's equation (Because first entry was 0)
 k2 = k2_perp + KZ.^2;         % Laplacian in F.S.
+kperpmax = max([abs(kx) abs(ky)]);
+kzmax    = max(abs(kz));
 if VariableTimeStep == 0
     exp_correct = exp(dt*nu*k2);  % (Romain thinks k2) %%% !!! Can include linear term !!!
 end
@@ -117,29 +118,20 @@ while t<TF && n<Cutoff
         phi_y = real(ifftn(KY.*phi));    %-x component of u_perp
         
         u_perp = sqrt((phi_x).^2 + (phi_y).^2);
-        if SlowModes == 1
-            u_par = real(ifftn((0.5).*(s_plus + s_minus)));
-            u_time = sqrt(u_par.^2 + u_perp.^2);
-        else
-            u_time = abs(u_perp);
-        end
+        u_time = abs(u_perp);
         
         psi = abs((0.5)*(Lap_z_plus - Lap_z_minus)./k2_poisson);
         psi_x = real(ifftn(KX.*psi));    % y component of b_perp
         psi_y = real(ifftn(KY.*psi));    %-x component of b_perp
         
         va_perp = sqrt(psi_x.^2 + psi_y.^2);
-        if SlowModes == 1
-            va_par = real(ifftn(bpar*(0.5).*(s_plus - s_minus)));
-            va_time = sqrt(va_par.^2 + va_perp.^2);
-        else
-            va_time = abs(va_perp);
-        end
+        va_time = abs(va_perp);
         
-        dt_grid_phi = (CFL*min_mesh)./u_time;
-        dt_grid_psi = (CFL*min_mesh)./va_time;
+        gamma_NL = kperpmax.*(u_time + va_time);
+        gamma_L  = kzmax*va;
+        dt_grid = CFL./(gamma_NL + gamma_L);
         
-        dt = min([min(dt_grid_phi(:)) min(dt_grid_psi(:))])/2;
+        dt = min(dt_grid(:));
         
         dt_save(n) = dt;
         time(n+1)  = time(n) + dt;
@@ -248,7 +240,11 @@ while t<TF && n<Cutoff
         if Fullscreen == 1
             set(gcf, 'Units', 'Normalized', 'OuterPosition', [0, 0.04, 1, 0.96])        % Makes figure fullscreen
         end
-        subplot(2,2,1)
+        if SlowModes == 1
+            subplot(2,2,1)
+        else
+            subplot(1,2,1)
+        end
         hold on
         hx = slice(XG, YG, ZG, zp, LX, [], []);
         set(hx,'FaceColor','interp','EdgeColor','none')
@@ -257,7 +253,6 @@ while t<TF && n<Cutoff
         hz = slice(XG, YG, ZG, zp, [], [], LZ);
         set(hz,'FaceColor','interp','EdgeColor','none')
         hold off
-        
         daspect([1,1,1])
         axis tight
         box on
@@ -270,7 +265,11 @@ while t<TF && n<Cutoff
         zlabel('z')
         colorbar
         
-        subplot(2,2,2)
+        if SlowModes == 1
+            subplot(2,2,2)
+        else
+            subplot(1,2,2)
+        end
         hold on
         hx = slice(XG, YG, ZG, zm, LX, [], []);
         set(hx,'FaceColor','interp','EdgeColor','none')
@@ -279,7 +278,6 @@ while t<TF && n<Cutoff
         hz = slice(XG, YG, ZG, zm, [], [], LZ);
         set(hz,'FaceColor','interp','EdgeColor','none')
         hold off
-        
         daspect([1,1,1])
         axis tight
         box on
@@ -367,21 +365,21 @@ if SlowModes == 1
     subplot(1,2,1)
     plot(time, E_z_plus, time, E_z_minus)
     title('\zeta^{\pm} "Energy"')
-    legend('\zeta^+', '\zeta^-')
+    legend('\zeta^+', '\zeta^-', 'Location', 'Best')
     xlabel('Time')
-    axis tight
+    axis([0 TF 0 1.1*max([E_z_plus E_z_minus])])
     
     subplot(1,2,2)
     plot(time, E_s_plus, time, E_s_minus)
     title('z^{\pm} "Energy"')
-    legend('z^+', 'z^-')
+    legend('z^+', 'z^-', 'Location', 'Best')
     xlabel('Time')
-    axis tight
+    axis([0 TF 0 1.1*max([E_s_plus E_s_minus])])
 else
     plot(time, E_z_plus, time, E_z_minus)
     title('\zeta^{\pm} "Energy"')
-    legend('\zeta^+', '\zeta^-')
+    legend('\zeta^+', '\zeta^-', 'Location', 'Best')
     xlabel('Time')
-    axis tight
+    axis([0 TF 0 1.1*max([E_z_plus E_z_minus])])
 end
 end
