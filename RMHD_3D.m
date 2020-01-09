@@ -103,6 +103,11 @@ if SlowModes == 1
     s_minus = fftn(0.01*sin( 2*pi*(j/LY+k/LZ)));
 end
 
+% Another way to create initial condition
+k2filter = k2_perp < 8*pi/LY;
+Lap_z_plus = k2_perp.*k2filter.*fftn(randn(NX,NY,NZ));
+Lap_z_minus = k2_perp.*k2filter.*fftn(randn(NX,NY,NZ));
+
 %% Solver %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 k=0;
