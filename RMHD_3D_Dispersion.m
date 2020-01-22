@@ -13,7 +13,7 @@ function [omegaout] = RMHD_3D_Dispersion(kn, LX, NX, bpar, va, nu, TFrun, no_per
 %% Paramaters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 Cutoff = 1000000;
-CFL    = 0.13;      % Courant Number
+CFL    = 0.1;      % Courant Number
 
 LY = LX;     % Box-size (y-direction)
 LZ = LX;     % Box-size (z-direction)     %%% !!! Should this scale differently to LX and LY? !!! %%%
@@ -28,7 +28,7 @@ for stnn = 1:length(strengthpx)
                 
                 N = NX(meshnn)*NY(meshnn)*NZ(meshnn);
                 TF = TFrun(bparnn, knnn, stnn);
-                TScreen = 0;
+                TScreen = 100;
                 SlowModes = 1;
                 Fullscreen = 1;
                 
@@ -65,8 +65,8 @@ for stnn = 1:length(strengthpx)
                 k2 = k2_perp + KZ.^2;         % Laplacian in F.S.
                 kperpmax = max([abs(kx) abs(ky)]);
                 kzmax    = max(abs(kz));
-                dt = min(CFL/(kzmax*va), TF/1e4);
-%                 disp(TF/dt)
+                dt = min([CFL/kzmax TF/1e4]);
+%                 disp([TF dt])
 %                 dt = TF/1e4
                 exp_correct = exp(dt*nu*k2);  % Romain thinks k2 %%%                        !!! Can include linear term !!!
                 
@@ -78,10 +78,10 @@ for stnn = 1:length(strengthpx)
                 ZG = permute(k, [2 1 3]);
         
                 if no_perp == 1
-                    s_plus  = fftn(0.01*sin(kn(knnn)*k));
+                    s_plus  = fftn(sin(kn(knnn)*k));
                     s_minus = fftn(0);
                 else
-                    s_plus  = fftn(0.01*sin((kn(knnn))*(i + j + k)));
+                    s_plus  = fftn(sin((kn(knnn))*(i + j + k)));
                     s_minus = fftn(0);
                 end
                 
@@ -102,25 +102,35 @@ for stnn = 1:length(strengthpx)
                     
                     % Calculates PB
                     % Compressive
+
+
                     PB_zp_sp  = fftn((strengthpx(stnn).*sp_y)  - (strengthpy(stnn).*sp_x));
+
                     PB_zp_sm  = fftn((strengthpx(stnn).*sm_y)  - (strengthpy(stnn).*sm_x));
+
                     PB_zm_sp  = fftn((strengthmx(stnn).*sp_y)  - (strengthmy(stnn).*sp_x));
+
                     PB_zm_sm  = fftn((strengthmx(stnn).*sm_y)  - (strengthmy(stnn).*sm_x));
                                       
                     NL_s_plus   = -(0.5).*((1-bpar(bparnn)).*PB_zp_sp + (1+bpar(bparnn)).*PB_zm_sp).*dealias;
-                    NL_s_minus  = -(0.5).*((1+bpar(bparnn)).*PB_zp_sm + (1-bpar(bparnn)).*PB_zm_sm).*dealias;
-                    
-                    %%% Compute Linear terms
 
+                    NL_s_minus  = -(0.5).*((1+bpar(bparnn)).*PB_zp_sm + (1-bpar(bparnn)).*PB_zm_sm).*dealias;
+%                     disp(sum(abs(NL_s_plus(:)).^2))
+                    %%% Compute Linear terms
+                    
                     Lin_s_plus     = (va*bpar(bparnn)).*KZ.*s_plus;
+
+%                     disp(sum(abs(Lin_s_plus(:)).^2))
                     Lin_s_minus    = -(va*bpar(bparnn)).*KZ.*s_minus;
                     
                     %%% Compute Solution at the next step %%%
 
                     s_plus_new         = dt*(Lin_s_plus + NL_s_plus) + s_plus;
+
                     s_minus_new        = dt*(Lin_s_minus + NL_s_minus) + s_minus;
                     
                     s_plus_new  = s_plus_new.*exp_correct;
+                                                                                                   
                     s_minus_new = s_minus_new.*exp_correct;
                     
                     %%% Energy %%%
@@ -138,11 +148,11 @@ for stnn = 1:length(strengthpx)
                         %Go back to real space for plotting
                         
 
-%                         if SlowModes == 1
-%                             sp     = double(permute(real(ifftn(s_plus_new)),[2,1,3]));
-%                             sm     = double(permute(real(ifftn(s_minus_new)),[2,1,3]));
-%                         end
-%                         figure(1)
+                        if SlowModes == 1
+                            sp     = double(permute(real(ifftn(s_plus_new)),[2,1,3]));
+                            sm     = double(permute(real(ifftn(s_minus_new)),[2,1,3]));
+                        end
+                        figure(1)
 %                         if Fullscreen == 1
 %                             set(gcf, 'Units', 'Normalized', 'OuterPosition', [0, 0.04, 1, 0.96])        % Makes figure fullscreen
 %                         end
@@ -196,28 +206,28 @@ for stnn = 1:length(strengthpx)
 %                         zlabel('z')
 %                         colorbar
 %                         
-%                         if SlowModes == 1
+                        if SlowModes == 1
 %                             subplot(2,2,3)
-%                             hold on
-%                             hx = slice(XG, YG, ZG, sp, LX, [], []);
-%                             set(hx,'FaceColor','interp','EdgeColor','none')
-%                             hy = slice(XG, YG, ZG, sp, [], dy, []);
-%                             set(hy,'FaceColor','interp','EdgeColor','none')
-%                             hz = slice(XG, YG, ZG, sp, [], [], LZ);
-%                             set(hz,'FaceColor','interp','EdgeColor','none')
-%                             hold off
-%                             
-%                             daspect([1,1,1])
-%                             axis tight
-%                             box on
-%                             view(42,16)
-%                             camproj perspective
-%                             set(gcf,'Renderer','zbuffer')
-%                             title('z^+')
-%                             xlabel('x')
-%                             ylabel('y')
-%                             zlabel('z')
-%                             colorbar
+                            hold on
+                            hx = slice(XG, YG, ZG, sp, LX, [], []);
+                            set(hx,'FaceColor','interp','EdgeColor','none')
+                            hy = slice(XG, YG, ZG, sp, [], dy, []);
+                            set(hy,'FaceColor','interp','EdgeColor','none')
+                            hz = slice(XG, YG, ZG, sp, [], [], LZ);
+                            set(hz,'FaceColor','interp','EdgeColor','none')
+                            hold off
+                            
+                            daspect([1,1,1])
+                            axis tight
+                            box on
+                            view(42,16)
+                            camproj perspective
+                            set(gcf,'Renderer','zbuffer')
+                            title('z^+')
+                            xlabel('x')
+                            ylabel('y')
+                            zlabel('z')
+                            colorbar
 %                             
 %                             subplot(2,2,4)
 %                             hold on
@@ -240,11 +250,11 @@ for stnn = 1:length(strengthpx)
 %                             ylabel('y')
 %                             zlabel('z')
 %                             colorbar
-%                         end
+                        end
 %                         saveas(gcf, ['./gif/' num2str(t) '.jpg'])
                         drawnow
                         k=0;
-                        m=1;
+                        
                     end
                     
                     u_par = real(ifftn((0.5).*(s_plus_new + s_minus_new)));
@@ -287,11 +297,11 @@ for stnn = 1:length(strengthpx)
                 
                 %%% Find average Omega from 3 velocity components
                 if no_perp == 1
-                    Tvect = [Tvz];    %Manually remove nonlinear components from this vector
+                    Tvect = [Tvz];
                     T = nanmean(Tvect);
                     omega = (2*pi)/T;
                 else
-                    Tvect = Tvz;%[Tvx, Tvy, Tvz];    %Manually remove nonlinear components from this vector
+                    Tvect = Tvz;%[Tvx, Tvy, Tvz];
                     T = nanmean(Tvect);
                     omega = (2*pi)/T;
                 end

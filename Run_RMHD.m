@@ -1,5 +1,4 @@
 function Run_RMHD
-clear all
 
 % Automatically cycles through wavenumbers to test the dispersion
 % relationship of linear waves propagating through a 3D torus
@@ -8,15 +7,15 @@ no_alfven = 0;      % Only test w = v_a*bpar*k_parallel (Makes u_perp and B_perp
 no_perp   = 0;      % Only test z-axis propagation
 va   = 1;
 nu = 1e-3;
-kn = (2*pi)*[1, 10];%, 50, 100];%, 500, 1000];
+kn = 2*pi*[0.9:0.02:1];%(2*pi)*[0.5, 0.6, 0.7, 0.8, 0.9];%, 0.9, 1];%, 5, 10];% 1, 10, 100];%, 50, 100];%, 500, 1000];            % This is actually the magnitude of k_x!!!!
 NX = 32;        % Mesh resolution
 beta = [1];%, 5, 10];%, 10];%, 10];%[0.01, 0.1, 1, 10, 100];
 
-if no_alfven == 0 && no_perp == 0
-    stpx = [10];%, 0];%, 10];%,  10];          % Note max of 7 (unless add more colours to 'colour' vector)
-    stmx = [0];%, 0];%, 10];%,  10];
-    stpy = [0];%, -2];%,  0];%,  10];
-    stmy = [0];%, 2];%,  0];%,   0];
+if no_alfven == 0 && no_perp ==  0
+    stpx = [0];%, 5,  0];%, 10];%,  10];          % Note max of 7 (unless add more colours to 'colour' vector)
+    stmx = [0];%, 5,  0];%, 10];%,  10];
+    stpy = [1];%, 0, -2];%,  0];%,  10];
+    stmy = [1];%, 0,  5];%,  0];%,   0];
 else
     stpx = 1;
     stmx = 1;
@@ -53,7 +52,9 @@ else
         for ii = 1:length(stpx)
             for jj = 1:length(kn)
                 for kk = 1:length(bpar)
-                    TF(kk, jj, ii) = 6*pi./((kn(jj)/(2*sqrt(3)))*(stpx(ii) + stmx(ii) - stpy(ii) - stmy(ii)) + va*bpar(kk)*kn(jj) + (bpar(kk)*kn(jj))/(2*sqrt(3))*(stpx(ii) + stmy(ii) - stmx(ii) - stpy(ii)));
+%                     TF(kk, jj, ii) = 6*pi./(kn(jj)*(stpx(ii) + stmx(ii) - stpy(ii) - stmy(ii)) + va*bpar(kk)*kn(jj) + bpar(kk)*kn(jj)*(stpx(ii) + stmy(ii) - stmx(ii) - stpy(ii)));
+%                     TF(kk, jj, ii) = 6*pi/((kn(jj)/2*sqrt(3))*(-(1+bpar(kk))*stpy(ii) - (1-bpar(kk))*stmy(ii) + (1+bpar(kk))*stpx(ii) + (1-bpar(kk))*stmx(ii)) + (va*bpar(kk)*kn(jj)/sqrt(3)));
+                    TF(kk, jj, ii) = abs(6*pi/(va*bpar(kk)*kn(jj) - (0.5)*(stpx(ii)*(1-bpar(kk)) + stmx(ii)*(1+bpar(kk)))*kn(jj) + (0.5)*(stpy(ii)*(1-bpar(kk)) + stmy(ii)*(1+bpar(kk)))*kn(jj)));
                 end
             end
         end
@@ -80,16 +81,19 @@ else
         for ii = 1:length(stpx)
             for jj = 1:length(kAn)
                 for kk = 1:length(bpar)
-                    omegaAn(kk, jj, ii) = ((kAn(jj)/(2*sqrt(3)))*(stpx(ii) + stmx(ii) - stpy(ii) - stmy(ii)) + va*bpar(kk)*kAn(jj) + (bpar(kk)*kAn(jj))/(2*sqrt(3))*(stpx(ii) + stmy(ii) - stmx(ii) - stpy(ii)));
+%                     omegaAn(kk, jj, ii) = (kAn(jj)*(stpx(ii) + stmx(ii) - stpy(ii) - stmy(ii)) + va*bpar(kk)*kAn(jj) + bpar(kk)*kAn(jj)*(stpx(ii) + stmy(ii) - stmx(ii) - stpy(ii)));
+%                     omegaAn1(kk, jj, ii) = (kAn(jj)/2*sqrt(3))*(-(1+bpar(kk))*stpy(ii) - (1-bpar(kk))*stmy(ii) + (1+bpar(kk))*stpx(ii) + (1-bpar(kk))*stmx(ii)) + (va*bpar(kk)*kAn(jj)/sqrt(3));
+%                     omegaAnm(kk,jj,ii)  = (kAn(jj)/2*sqrt(3))*(-(1-bpar(kk))*stpy(ii) - (1+bpar(kk))*stmy(ii) + (1-bpar(kk))*stpx(ii) + (1+bpar(kk))*stmx(ii)) - (va*bpar(kk)*kAn(jj)/sqrt(3));
+                    omegaAn(kk, jj, ii) = abs(va*bpar(kk)*kAn(jj) - (0.5)*(stpx(ii)*(1-bpar(kk)) + stmx(ii)*(1+bpar(kk)))*kAn(jj) + (0.5)*(stpy(ii)*(1-bpar(kk)) + stmy(ii)*(1+bpar(kk)))*kAn(jj));
                 end
             end
         end
     end
 end
-
+disp(omega)
 if no_alfven == 0 && no_perp == 0
-    colourAn = {'b-', 'r-', 'm-', 'y-', 'c-', 'g-', 'k-'};
-    colour   = {'bo', 'ro', 'mo', 'yo', 'co', 'go', 'ko'};
+%     colourAn = {'b-', 'r-', 'm-', 'y-', 'c-', 'g-', 'k-'};
+%     colour   = {'bo', 'ro', 'mo', 'yo', 'co', 'go', 'ko'};
     close all
     figure(1)
     hold on
