@@ -22,7 +22,7 @@ CFL              = 0.13;      % Courant Number
 dt               = 1e-3;      % Time Step (For fixed time step runs)
 
 % PLOTTING
-TScreen          = 500;       % Screen Update Interval Count (NOTE: plotting is usually slow) (Set to 0 for no plotting)
+TScreen          = 0;       % Screen Update Interval Count (NOTE: plotting is usually slow) (Set to 0 for no plotting)
 Fullscreen       = 1;         % Makes plot figure fullscreen !!! Forces figure to foreground through run !!!
 
 %% Paramaters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -34,9 +34,9 @@ LX = 2*pi;     % Box-size (x-direction)
 LY = 2*pi;     % Box-size (y-direction)
 LZ = 2*pi;     % Box-size (z-direction)
 
-NX = 32;       % Resolution in x
-NY = 32;       % Resolution in y
-NZ = 32;       % Resolution in z
+NX = 64;       % Resolution in x
+NY = 64;       % Resolution in y
+NZ = 64;       % Resolution in z
 N  = NX*NY*NZ;
 
 if VariableTimeStep == 1
@@ -92,8 +92,8 @@ XG = permute(i, [2 1 3]);
 YG = permute(j, [2 1 3]);
 ZG = permute(k, [2 1 3]);
 
-Lap_z_plus  = k2_perp.*fftn(0.1*cos(2*pi*(4*i/LX - 2*j/LY - k/LZ)));
-Lap_z_minus = k2_perp.*fftn(0.1*sin(2*pi*(i/LX + j/LY + k/LZ)));
+% Lap_z_plus  = k2_perp.*fftn(0.1*cos(2*pi*(4*i/LX - 2*j/LY - k/LZ)));
+% Lap_z_minus = k2_perp.*fftn(0.1*sin(2*pi*(i/LX + j/LY + k/LZ)));
 
 % Lap_zeta_plus  = k2_perp.*fftn(1);
 % Lap_zeta_minus = k2_perp.*fftn(0);
@@ -344,7 +344,7 @@ while t<TF && n<Cutoff
         drawnow
         k=0;
     end
-    
+    disp(t)
     % Update variables for next timestep
     n = n+1;
     Lap_z_plus  = Lap_z_plus_new;

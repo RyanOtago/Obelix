@@ -28,7 +28,7 @@ for stnn = 1:length(strengthpx)
                 
                 N = NX(meshnn)*NY(meshnn)*NZ(meshnn);
                 TF = TFrun(bparnn, knnn, stnn);
-                TScreen = 100;
+                TScreen = 0;
                 SlowModes = 1;
                 Fullscreen = 1;
                 
@@ -57,7 +57,7 @@ for stnn = 1:length(strengthpx)
                 ky = (2*I*pi/LY(knnn))*[0:((NY(meshnn)/2)-1)  -(NY(meshnn)/2):-1];
                 kz = (2*I*pi/LZ(knnn))*[0:((NZ(meshnn)/2)-1)  -(NZ(meshnn)/2):-1];
                 [KX, KY, KZ] = ndgrid(kx, ky, kz);
-                dealias = abs(KX)<(1/3)*NX(meshnn) & abs(KY)<(1/3)*NY(meshnn) & abs(KZ)<(1/3)*NZ(meshnn);    % Cutting of frequencies for dealiasing using the 2/3 rule   (2/3)*(N/2)
+                dealias = (LX(knnn)/(2*pi))*abs(KX)<(1/3)*NX(meshnn) & (LX(knnn)/(2*pi))*abs(KY)<(1/3)*NY(meshnn) & (LX(knnn)/(2*pi))*abs(KZ)<(1/3)*NZ(meshnn);    % Cutting of frequencies for dealiasing using the 2/3 rule   (2/3)*(N/2)
                 
                 k2_perp = KX.^2 + KY.^2;      % (Perpendicular) Laplacian in Fourier space
                 k2_poisson = k2_perp;

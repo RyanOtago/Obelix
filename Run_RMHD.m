@@ -7,15 +7,15 @@ no_alfven = 0;      % Only test w = v_a*bpar*k_parallel (Makes u_perp and B_perp
 no_perp   = 0;      % Only test z-axis propagation
 va   = 1;
 nu = 1e-3;
-kn = 2*pi*[0.9:0.02:1];%(2*pi)*[0.5, 0.6, 0.7, 0.8, 0.9];%, 0.9, 1];%, 5, 10];% 1, 10, 100];%, 50, 100];%, 500, 1000];            % This is actually the magnitude of k_x!!!!
+kn = 2*pi*[0.1, 1, 10, 100];%(2*pi)*[0.5, 0.6, 0.7, 0.8, 0.9];%, 0.9, 1];%, 5, 10];% 1, 10, 100];%, 50, 100];%, 500, 1000];            % This is actually the magnitude of k_x!!!!
 NX = 32;        % Mesh resolution
-beta = [1];%, 5, 10];%, 10];%, 10];%[0.01, 0.1, 1, 10, 100];
+beta = [0.1, 1, 10, 100];%, 5, 10];%, 10];%, 10];%[0.01, 0.1, 1, 10, 100];
 
 if no_alfven == 0 && no_perp ==  0
-    stpx = [0];%, 5,  0];%, 10];%,  10];          % Note max of 7 (unless add more colours to 'colour' vector)
-    stmx = [0];%, 5,  0];%, 10];%,  10];
-    stpy = [1];%, 0, -2];%,  0];%,  10];
-    stmy = [1];%, 0,  5];%,  0];%,   0];
+    stpx = [0];%, 0];%, 5,  0];%, 10];%,  10];          % Note max of 7 (unless add more colours to 'colour' vector)
+    stmx = [0];%, 0];%, 5,  0];%, 10];%,  10];
+    stpy = [0];%, 1];%, 0, -2];%,  0];%,  10];
+    stmy = [0];%, 1];%, 0,  5];%,  0];%,   0];
 else
     stpx = 1;
     stmx = 1;
