@@ -9,6 +9,7 @@ function RMHD_3D_Turbulence
 SlowModes        = 0;         % Calculate evolution of compressive modes in run
 TF               = 2;         % Final Time
 NormalisedEnergy = 1;         % Scales initial condition so u_perp ~ B_perp ~ 1
+HyperViscosity   = 1;         % Use nu*(k^6) instead of nu*(k^2) for dissipation
 
 SaveOutput       = 1;         % Writes energies, u and B components for each time step to a .txt file
 TOutput          = 200;        % Number of iterations before output
@@ -30,7 +31,7 @@ EnergyPlot       = 1;         % Plots energy when run has completed
 
 %% Paramaters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 va   = 1;      % Alfven velocity
-nu   = 1e-5;   % Viscosity          !!! Check which type it is? (Just for label really) !!!
+nu   = 1e-3;   % Viscosity          !!! Check which type it is? (Just for label really) !!!
 beta = 1;      % c_s/v_A
 
 LX = 1;     % Box-size (x-direction)
@@ -49,6 +50,8 @@ if VariableTimeStep == 1
     E_z_minus    = zeros(1, Cutoff);
     E_s_plus     = zeros(1, Cutoff);
     E_s_minus    = zeros(1, Cutoff);
+    E_zp_diss    = zeros(1, Cutoff);
+    E_zm_diss    = zeros(1, Cutoff);
     
 else
     time = dt:dt:TF;
@@ -57,6 +60,8 @@ else
     E_z_minus    = zeros(1, length(time));
     E_s_plus     = zeros(1, length(time));
     E_s_minus    = zeros(1, length(time));
+    E_zp_diss    = zeros(1, length(time));
+    E_zm_diss    = zeros(1, length(time));
 end
 
 dx = LX/NX;
@@ -82,11 +87,16 @@ k2_perp = KX.^2 + KY.^2;      % (Perpendicular) Laplacian in Fourier space
 k2_poisson = k2_perp;
 k2_poisson(1,1,:) = 1;        % Fixed Laplacian in F.S. for Poisson's equation (Because first entry was 0)
 k2 = k2_perp + KZ.^2;         % Laplacian in F.S.
+k6 = k2.^3;
 kperpmax = max([abs(kx) abs(ky)]);
 kzmax    = max(abs(kz));
 
 if VariableTimeStep == 0
-    exp_correct = exp(dt*nu*k2);  % (Romain thinks k2) %%% !!! Can include linear term !!!
+    if HyperViscosity == 1
+        exp_correct = exp(dt*nu*k6); %%% !!! Can include linear term !!!
+    else
+        exp_correct = exp(dt*nu*k2);
+    end
 end
 
 %% Initial Condition %%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -191,7 +201,12 @@ while t<TF && n<Cutoff
         
         dt_save(n) = dt;
         time(n+1)  = time(n) + dt;
-        exp_correct = exp(dt*nu*k2);  % Romain thinks k2 %%%                        !!! Can include linear term !!!
+        
+        if HyperViscosity == 1
+            exp_correct = exp(dt*nu*k6);
+        else
+            exp_correct = exp(dt*nu*k2);
+        end
     end
     
     %%% Update zeta p/m for new time-step
@@ -265,13 +280,19 @@ while t<TF && n<Cutoff
         s_plus_new  = s_plus_new.*exp_correct;
         s_minus_new = s_minus_new.*exp_correct;
     end
+    
     %%% Energy %%%
     
     E_z_plus_grid  = (abs(Lap_z_plus_new).^2)./abs(k2_poisson);
     E_z_minus_grid = (abs(Lap_z_minus_new).^2)./abs(k2_poisson);
     
+    E_zp_diss_grid = abs(Lap_z_plus_new).^2;
+    E_zm_diss_grid = abs(Lap_z_minus_new).^2;
+    
     E_z_plus(n)  = (0.5)*sum(E_z_plus_grid(:))*(grid_int);
     E_z_minus(n) = (0.5)*sum(E_z_minus_grid(:))*(grid_int);
+    E_zp_diss(n) = nu*sum(E_zp_diss_grid(:))*grid_int;
+    E_zm_diss(n) = nu*sum(E_zm_diss_grid(:))*grid_int;
     
     if SlowModes == 1
         E_s_plus_grid     = (abs(s_plus_new)).^2;
@@ -280,6 +301,9 @@ while t<TF && n<Cutoff
         E_s_plus(n)     = (0.5)*sum(E_s_plus_grid(:))*(grid_int);
         E_s_minus(n)    = (0.5)*sum(E_s_minus_grid(:))*(grid_int);
     end
+    
+
+    
     t=t+dt;
     
     %% Plotting %%%         %%% Can add better slow mode switch (get rid of 2 subplots)
@@ -402,8 +426,11 @@ while t<TF && n<Cutoff
 %% Save Output %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     if l == TOutput && SaveOutput == 1   % To save a new variable simply add line, "output.variable = variable"
         m=m+1;
-     
+        
         output.time = t;
+        if VariableTimeStep == 1
+            output.timevec = time;
+        end
         % Zeta and Z
         output.Lzp = Lap_z_plus_new;
         output.Lzm = Lap_z_minus_new;

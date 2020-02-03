@@ -8,19 +8,21 @@ SavePlot      = 0;
 PlotDirectory = './';
 
 Directory = './Turbulence/';
-Folder    = '2020-01-31 11-57-23/';
+Folder    = '2020-02-03 16-13-18/';
 
 filename = @(n) [Directory Folder sprintf('%u',n) '.mat'];
 
 if SinglePlot == 1
-    Number = 1000;         % Chooose single file you want to plot figures for
+    Number = 55;         % Chooose single file you want to plot figures for
 end
 
 %% Loading Parameters from 0.mat
 Init0 = load(filename(0));
 input = Init0.input;
 
-VariableTimeStep = input.Parameters.VariableTimeStep;
+VariableTimeStep = 0;%input.Parameters.VariableTimeStep;
+TF = input.Parameters.TF;
+
 KX = input.KX; KY = input.KY; KZ = input.KZ;
 NX = input.Parameters.NX; NY = input.Parameters.NY; NZ = input.Parameters.NZ; 
 LX = input.Parameters.LX; LY = input.Parameters.LY; LZ = input.Parameters.LZ; 
@@ -40,17 +42,26 @@ output = Init1.output;
 t = output.time;
 Lap_z_plus  = output.Lzp;
 Lap_z_minus = output.Lzm;
+E_z_plus    = output.Ezp;
+E_z_minus   = output.Ezm;
 
 try
-    s_plus  = output.sp;
-    s_minus = output.sm;
+    s_plus    = output.sp;
+    s_minus   = output.sm;
+    E_s_plus  = output.Esp;
+    E_s_minus = output.Esm;
 catch
     SlowModes = 0;
-    s_plus  = 0;
-    s_minus = 0;
+    s_plus    = 0;
+    s_minus   = 0;
+    E_s_plus  = 0;
+    E_s_minus = 0;
 end
+
 figure(1)
+% EnergyPlot(t, E_z_plus, E_z_minus, E_s_plus, E_s_minus, SlowModes, TF, VariableTimeStep)
 PlotGrid(Lap_z_plus, Lap_z_minus, k2_poisson, Fullscreen, SlowModes, SavePlot, PlotDirectory, XG, YG, ZG, LX, LZ, dy, t, SlowModes, s_plus, s_minus)
+
 
 end
 
@@ -169,17 +180,18 @@ function PlotGrid(Lap_z_plus, Lap_z_minus, k2_poisson, Fullscreen, SlowModes, Sa
         end
 end
 
-function EnergyPlot()
+function EnergyPlot(time, E_z_plus, E_z_minus, E_s_plus, E_s_minus, SlowModes, TF, VariableTimeStep)
 
 if VariableTimeStep == 1
     % Cut off trailing zeros from time and energy vectors
     time = time(2:find(time,1,'last'));
     E_z_plus  = E_z_plus(1:length(time));
     E_z_minus = E_z_minus(1:length(time));
-    E_s_plus  = E_s_plus(1:length(time));
-    E_s_minus = E_s_minus(1:length(time));
+    if SlowModes == 1
+        E_s_plus  = E_s_plus(1:length(time));
+        E_s_minus = E_s_minus(1:length(time));
+    end
 end
-
 figure(2)
 if SlowModes == 1
     subplot(1,2,1)
@@ -196,11 +208,12 @@ if SlowModes == 1
     xlabel('Time')
     axis([0 TF 0 1.1*max([E_s_plus E_s_minus])])
 else
-    plot(time, E_z_plus, time, E_z_minus)
+%     plot(time, E_z_plus, time, E_z_minus)
+plot(E_z_plus)
     title('\zeta^{\pm} "Energy"')
     legend('\zeta^+', '\zeta^-', 'Location', 'Best')
     xlabel('Time')
-    axis([0 TF 0 1.1*max([E_z_plus E_z_minus])])
+    axis([0 TF 0.9*min([E_z_plus(1, 0:length(time)) E_z_minus(1, 0:length(time))]) 1.1*max([E_z_plus E_z_minus])])
 end
 
 end

@@ -1,7 +1,7 @@
 function spectrumMATLAB()
 
 Directory = './Turbulence/';
-Folder    = '2020-02-03 13-19-55/';
+Folder    = '2020-02-03 14-58-54/';
 
 filename = @(n) [Directory Folder sprintf('%u',n) '.mat'];
 
@@ -34,7 +34,6 @@ oneG = ones(size(KX));
 S.nbin = spect1D(oneG,oneG,Kspec,kgrid)*numel(oneG)^2;
 S.nnorm = S.nbin./S.kgrid.^2; % k^2 accounts for the fact that in 3D, number of modes in shell increases with k^2
 S.nnorm = S.nnorm/mean(S.nnorm); % Normalization by number of modes
-
 m3 = @(a) mean(mean(mean(a)));
 
 % Average over all the snapshots
@@ -43,7 +42,7 @@ ns = 0;
 fields = {'Lzp','Lzm','EK'};%,'vel3','Bcc1','Bcc2','Bcc3','EK','EM','B','rho'};
 for var = fields;S.(var{1}) = 0;end
 
-for nnn = 100: 110;%Nfiles-1
+for nnn = 34%Nfiles-1
 %     disp(['Doing ' Folder ' nnn = ' num2str(nnn)])      %<<<<< Change wording
     try 
         D = load(filename(nnn));
@@ -54,34 +53,15 @@ for nnn = 100: 110;%Nfiles-1
     end
    
     for var = {'Lzp', 'Lzm'}
-        %         ft = fftn(D.output.(var{1}));
-%         if strcmp(var{1}, 'Lzp')
-%             ft = -(KY.*(D.output.Lzp)./(Kpois.^2)) - (KY.*(D.output.Lzm)./(Kpois.^2));
-%         else
-%             ft = (KY.*(D.output.Lzp)./(Kpois.^2)) + (KY.*(D.output.Lzm)./(Kpois.^2));
-%         end
         ft = D.output.(var{1});
         S.(var{1}) = S.(var{1}) + spect1D(ft,ft,Kspec,kgrid);
         S.EK = S.EK + S.(var{1}); % Total spectrum is the sum of each component
     end
-%     if MHD
-%         for var = {'Bcc1','Bcc2','Bcc3'}
-%             ft = fftn(D.(var{1}));
-%             S.(var{1}) = S.(var{1}) + spect1D(ft,ft,Kspec,kgrid);
-%             S.EM = S.EM + S.(var{1});
-%         end
-%         Bmag = sqrt(D.Bcc1.^2+D.Bcc2.^2+D.Bcc3.^2);
-%         ft = fftn(Bmag);
-%         S.B = S.B + spect1D(ft,ft,Kspec,kgrid); 
-%     end
-%     ft = fftn( D.rho - m3(D.rho) );
-%     S.rho = S.rho + spect1D(ft,ft,Kspec,kgrid);
-%     
     ns = ns+1;
-    fraction = ns/(Nfiles-1);
+%     fraction = ns/(Nfiles-1);
 %     waitbar(fraction)         % Creates a 'Loading bar' showing progress of code through files
 end
-for var = fields;S.(var{1}) = S.(var{1})/ns;end
+for var = fields;S.(var{1}) = S.(var{1}).*(S.nnorm/ns);end
 % S.nums = nums;
 save(['spectrum.mat'],'S');
 
