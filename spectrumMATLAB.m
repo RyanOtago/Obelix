@@ -1,7 +1,7 @@
 function spectrumMATLAB()
 
-Directory = './Run/';
-Folder    = '2020-01-28 13-00-00/';
+Directory = './Turbulence/';
+Folder    = '2020-02-03 13-19-55/';
 
 filename = @(n) [Directory Folder sprintf('%u',n) '.mat'];
 
@@ -43,10 +43,11 @@ ns = 0;
 fields = {'Lzp','Lzm','EK'};%,'vel3','Bcc1','Bcc2','Bcc3','EK','EM','B','rho'};
 for var = fields;S.(var{1}) = 0;end
 
-for nnn = 1: Nfiles-1
+for nnn = 100: 110;%Nfiles-1
 %     disp(['Doing ' Folder ' nnn = ' num2str(nnn)])      %<<<<< Change wording
     try 
         D = load(filename(nnn));
+        disp(nnn)
     catch 
         warning(['Didnt find the file ' filename(nnn)])
         break
@@ -54,11 +55,12 @@ for nnn = 1: Nfiles-1
    
     for var = {'Lzp', 'Lzm'}
         %         ft = fftn(D.output.(var{1}));
-        if strcmp(var{1}, 'Lzp')
-            ft = -(KY.*(D.output.Lzp)./(Kpois.^2)) - (KY.*(D.output.Lzm)./(Kpois.^2));
-        else
-            ft = (KY.*(D.output.Lzp)./(Kpois.^2)) + (KY.*(D.output.Lzm)./(Kpois.^2));
-        end
+%         if strcmp(var{1}, 'Lzp')
+%             ft = -(KY.*(D.output.Lzp)./(Kpois.^2)) - (KY.*(D.output.Lzm)./(Kpois.^2));
+%         else
+%             ft = (KY.*(D.output.Lzp)./(Kpois.^2)) + (KY.*(D.output.Lzm)./(Kpois.^2));
+%         end
+        ft = D.output.(var{1});
         S.(var{1}) = S.(var{1}) + spect1D(ft,ft,Kspec,kgrid);
         S.EK = S.EK + S.(var{1}); % Total spectrum is the sum of each component
     end
@@ -76,6 +78,8 @@ for nnn = 1: Nfiles-1
 %     S.rho = S.rho + spect1D(ft,ft,Kspec,kgrid);
 %     
     ns = ns+1;
+    fraction = ns/(Nfiles-1);
+%     waitbar(fraction)         % Creates a 'Loading bar' showing progress of code through files
 end
 for var = fields;S.(var{1}) = S.(var{1})/ns;end
 % S.nums = nums;

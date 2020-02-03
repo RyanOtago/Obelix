@@ -7,19 +7,19 @@ function RMHD_3D_Turbulence
 
 %% Options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 SlowModes        = 0;         % Calculate evolution of compressive modes in run
-TF               = 4;         % Final Time
-NormalisedEnergy = 0;         % Scales initial condition so u_perp ~ B_perp ~ 1
+TF               = 2;         % Final Time
+NormalisedEnergy = 1;         % Scales initial condition so u_perp ~ B_perp ~ 1
 
 SaveOutput       = 1;         % Writes energies, u and B components for each time step to a .txt file
-TOutput          = 10;        % Number of iterations before output
-OutputDirectory  = './Run';   % Directory .txt file above is saved to
+TOutput          = 200;        % Number of iterations before output
+OutputDirectory  = './Turbulence';   % Directory .txt file above is saved to
 
 VariableTimeStep = 1;         % Enable variable time step, else dt must be defined below
 % VARIABLE time step
-Cutoff           = 100000;    % Maximum number of iterations for variable time step
-CFL              = 0.10;      % Courant Number
+Cutoff           = 1000000;    % Maximum number of iterations for variable time step
+CFL              = 0.13;      % Courant Number
 % FIXED time step
-dt               = 1e-5;      % Time Step (For fixed time step runs)
+dt               = 1e-4;      % Time Step (For fixed time step runs)
 
 % PLOTTING
 TScreen          = 0;         % Screen Update Interval Count (NOTE: plotting is usually slow) (Set to 0 for no plotting)
@@ -30,16 +30,16 @@ EnergyPlot       = 1;         % Plots energy when run has completed
 
 %% Paramaters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 va   = 1;      % Alfven velocity
-nu   = 1e-3;   % Viscosity          !!! Check which type it is? (Just for label really) !!!
+nu   = 1e-5;   % Viscosity          !!! Check which type it is? (Just for label really) !!!
 beta = 1;      % c_s/v_A
 
-LX = 2*pi;     % Box-size (x-direction)
-LY = 2*pi;     % Box-size (y-direction)
-LZ = 2*pi;     % Box-size (z-direction)
+LX = 1;     % Box-size (x-direction)
+LY = 1;     % Box-size (y-direction)
+LZ = 1;     % Box-size (z-direction)
 
-NX = 128;       % Resolution in x
-NY = 128;       % Resolution in y
-NZ = 128;       % Resolution in z
+NX = 64;       % Resolution in x
+NY = 64;       % Resolution in y
+NZ = 64;       % Resolution in z
 N  = NX*NY*NZ;
 
 if VariableTimeStep == 1
@@ -116,23 +116,22 @@ Lap_z_minus = k2_perp.*k2filter.*fftn(randn(NX,NY,NZ));
 % s_plus = k2filter.*fftn(0.1*randn(NX,NY,NZ));
 % s_minus = k2filter.*fftn(0.1*randn(NX,NY,NZ));
 
-% if NormalisedEnergy == 1
-%     z_plus  = Lap_z_plus./k2_poisson;
-%     z_minus = Lap_z_minus./k2_poisson;
-%     
-%     z_px = ifftn(z_plus.*KX);
-%     z_py = ifftn(z_plus.*KY);
-%     z_mx = ifftn(z_minus.*KX);
-%     z_my = ifftn(z_minus.*KY);
-%     
-%     E_u_grid = (1/4)*(abs(z_py + z_my).^2 + abs(z_px + z_mx).^2);
-%     E_b_grid = (1/(4*va^2))*(abs(-z_py + z_my).^2 + abs(z_px - z_mx).^2);
-% 
-%     E_u = (0.5)*sum(E_u_grid(:))*(grid_int);
-%     E_b = (0.5)*sum(E_b_grid(:))*(grid_int);
-% 
-% %     disp([E_u E_b])
-% end
+if NormalisedEnergy == 1
+    z_plus  = Lap_z_plus./k2_poisson;
+    z_minus = Lap_z_minus./k2_poisson;
+    
+    E_u_grid = abs(z_plus).^2;
+    E_b_grid = abs(z_minus).^2;
+
+    E_u = (0.5)*sum(E_u_grid(:))*(grid_int);
+    E_b = (0.5)*sum(E_b_grid(:))*(grid_int);
+
+    Normalise = sqrt(mean([E_u E_b]));
+    
+    Lap_z_plus = (1/Normalise)*Lap_z_plus;
+    Lap_z_minus = (1/Normalise)*Lap_z_minus;
+    
+end
 
 
 if SaveOutput == 1
@@ -152,7 +151,7 @@ if SaveOutput == 1
     input.KY = KY;
     input.KZ = KZ;    
     
-    Parameters = struct('va', va, 'nu', nu, 'beta', beta, 'LX', LX, 'LY', LY, 'LZ', LZ, 'NX', NX, 'NY', NY, 'NZ', NZ, 'dtFixed', dt, 'CFL', CFL, 'TF', TF, 'TOutput', TOutput);
+    Parameters = struct('va', va, 'nu', nu, 'beta', beta, 'LX', LX, 'LY', LY, 'LZ', LZ, 'NX', NX, 'NY', NY, 'NZ', NZ, 'dtFixed', dt, 'CFL', CFL, 'TF', TF, 'TOutput', TOutput, 'VariableTimeStep', VariableTimeStep);
     input.Parameters = Parameters;
     save([OutputDirectory '/' RunFolder '/' num2str(m)], 'input')
 end
@@ -395,7 +394,7 @@ while t<TF && n<Cutoff
         drawnow
         
         if SavePlot == 1
-            saveas(gcf, [PlotDirectory num2str(t) '.jpg'])
+            saveas(gcf, [PlotDirectory num2str(t, '%10f') '.jpg'])
         end
         k=0;
     end
@@ -425,7 +424,7 @@ while t<TF && n<Cutoff
     end
 
 %% Update variables for next timestep %%%%%%%%%%%%%%%%%%%%%
-    n = n+1
+    n = n+1;
     Lap_z_plus  = Lap_z_plus_new;
     Lap_z_minus = Lap_z_minus_new;
     if SlowModes == 1
@@ -467,6 +466,4 @@ if EnergyPlot == 1
         xlabel('Time')
         axis([0 TF 0 1.1*max([E_z_plus E_z_minus])])
     end
-end
-
 end
