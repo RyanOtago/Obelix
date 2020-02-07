@@ -11,9 +11,9 @@ TF               = 2;         % Final Time
 NormalisedEnergy = 1;         % Scales initial condition so u_perp ~ B_perp ~ 1
 HyperViscosity   = 1;         % Use nu*(k^6) instead of nu*(k^2) for dissipation
 
-SaveOutput       = 1;         % Writes energies, u and B components for each time step to a .txt file
+SaveOutput       = 1;         % Writes energies, u and B components for each time step to a .mat file
 TOutput          = 200;        % Number of iterations before output
-OutputDirectory  = './Turbulence';   % Directory .txt file above is saved to
+OutputDirectory  = './Turbulence';   % Directory .mat file above is saved to
 
 VariableTimeStep = 1;         % Enable variable time step, else dt must be defined below
 % VARIABLE time step
@@ -27,20 +27,20 @@ TScreen          = 0;         % Screen Update Interval Count (NOTE: plotting is 
 Fullscreen       = 1;         % Makes plot figure fullscreen (Recommended if saving plots) !!! Forces figure to foreground through run !!!
 SavePlot         = 0;         % Saves figure as a .jpg file everytime a new plot is created
 PlotDirectory    = './gif/';  % Directory the plot is saved to
-EnergyPlot       = 1;         % Plots energy when run has completed
+EnergyPlot       = 0;         % Plots energy when run has completed
 
 %% Paramaters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 va   = 1;      % Alfven velocity
-nu   = 1e-3;   % Viscosity          !!! Check which type it is? (Just for label really) !!!
+nu   = 1e-11;   % Viscosity          !!! Check which type it is? (Just for label really) !!! Need to differentiate between nu_2 and nu_6
 beta = 1;      % c_s/v_A
 
 LX = 1;     % Box-size (x-direction)
 LY = 1;     % Box-size (y-direction)
 LZ = 1;     % Box-size (z-direction)
 
-NX = 64;       % Resolution in x
-NY = 64;       % Resolution in y
-NZ = 64;       % Resolution in z
+NX = 48;       % Resolution in x
+NY = 48;       % Resolution in y
+NZ = 48;       % Resolution in z
 N  = NX*NY*NZ;
 
 if VariableTimeStep == 1
@@ -119,28 +119,30 @@ if SlowModes == 1
 end
 
 % Another way to create initial condition
-k2filter = sqrt(abs(k2)) < 8*pi/LX;
-Lap_z_plus = k2_perp.*k2filter.*fftn(randn(NX,NY,NZ));
+k2filter    = sqrt(abs(k2)) < 10*pi/LX;
+Lap_z_plus  = k2_perp.*k2filter.*fftn(randn(NX,NY,NZ));
 Lap_z_minus = k2_perp.*k2filter.*fftn(randn(NX,NY,NZ));
 
 % s_plus = k2filter.*fftn(0.1*randn(NX,NY,NZ));
 % s_minus = k2filter.*fftn(0.1*randn(NX,NY,NZ));
 
 if NormalisedEnergy == 1
-    z_plus  = Lap_z_plus./k2_poisson;
-    z_minus = Lap_z_minus./k2_poisson;
+    kz_plus  = Lap_z_plus./sqrt(k2_poisson);
+    kz_minus = Lap_z_minus./sqrt(k2_poisson);
     
-    E_u_grid = abs(z_plus).^2;
-    E_b_grid = abs(z_minus).^2;
+    E_u_grid = abs(kz_plus).^2;
+    E_b_grid = abs(kz_minus).^2;
 
     E_u = (0.5)*sum(E_u_grid(:))*(grid_int);
     E_b = (0.5)*sum(E_b_grid(:))*(grid_int);
 
     Normalise = sqrt(mean([E_u E_b]));
     
-    Lap_z_plus = (1/Normalise)*Lap_z_plus;
-    Lap_z_minus = (1/Normalise)*Lap_z_minus;
-    
+    kz_plus  = (1/Normalise)*kz_plus;
+    kz_minus = (1/Normalise)*kz_minus;
+
+    Lap_z_plus  = sqrt(k2_perp).*kz_plus;
+    Lap_z_minus = sqrt(k2_perp).*kz_minus;
 end
 
 
@@ -161,7 +163,7 @@ if SaveOutput == 1
     input.KY = KY;
     input.KZ = KZ;    
     
-    Parameters = struct('va', va, 'nu', nu, 'beta', beta, 'LX', LX, 'LY', LY, 'LZ', LZ, 'NX', NX, 'NY', NY, 'NZ', NZ, 'dtFixed', dt, 'CFL', CFL, 'TF', TF, 'TOutput', TOutput, 'VariableTimeStep', VariableTimeStep);
+    Parameters = struct('va', va, 'nu', nu, 'beta', beta, 'LX', LX, 'LY', LY, 'LZ', LZ, 'NX', NX, 'NY', NY, 'NZ', NZ, 'dtFixed', dt, 'CFL', CFL, 'TF', TF, 'TOutput', TOutput, 'VariableTimeStep', VariableTimeStep, 'HyperViscosity', HyperViscosity, 'SlowModes', SlowModes);
     input.Parameters = Parameters;
     save([OutputDirectory '/' RunFolder '/' num2str(m)], 'input')
 end
@@ -301,10 +303,8 @@ while t<TF && n<Cutoff
         E_s_plus(n)     = (0.5)*sum(E_s_plus_grid(:))*(grid_int);
         E_s_minus(n)    = (0.5)*sum(E_s_minus_grid(:))*(grid_int);
     end
-    
-
-    
-    t=t+dt;
+       
+    t=t+dt
     
     %% Plotting %%%         %%% Can add better slow mode switch (get rid of 2 subplots)
     if k == TScreen
