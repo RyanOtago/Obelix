@@ -7,11 +7,11 @@ function RMHD_3D_Turbulence
 
 %% Options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 SlowModes        = 0;         % Calculate evolution of compressive modes in run
-TF               = 4;         % Final Time
+TF               = 1.5;         % Final Time
 NormalisedEnergy = 1;         % Scales initial condition so u_perp ~ B_perp ~ 1
 HyperViscosity   = 1;         % Use nu*(k^6) instead of nu*(k^2) for dissipation
 
-SaveOutput       = 0;         % Writes energies, u and B components for each time step to a .mat file
+SaveOutput       = 1;         % Writes energies, u and B components for each time step to a .mat file
 TOutput          = 200;        % Number of iterations before output
 OutputDirectory  = './Turbulence';   % Directory .mat file above is saved to
 
@@ -24,27 +24,27 @@ CFL              = 0.13;      % Courant Number
 dt               = 1e-4;      % Time Step (For fixed time step runs)
 
 % PLOTTING
-TScreen          = 1000;         % Screen Update Interval Count (NOTE: plotting is usually slow) (Set to 0 for no plotting)
-Fullscreen       = 0;         % Makes plot figure fullscreen (Recommended if saving plots) !!! Forces figure to foreground through run !!!
+TScreen          = 0;         % Screen Update Interval Count (NOTE: plotting is usually slow) (Set to 0 for no plotting)
+Fullscreen       = 1;         % Makes plot figure fullscreen (Recommended if saving plots) !!! Forces figure to foreground through run !!!
 SavePlot         = 0;         % Saves figure as a .jpg file everytime a new plot is created
 PlotDirectory    = './gif/';  % Directory the plot is saved to
 EnergyPlot       = 0;         % Plots energy when run has completed
 
 %% Paramaters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 va   = 1;      % Alfven velocity
-nu   = (2/3)^(5.3333)*2e-10;   % Viscosity          !!! Check which type it is? (Just for label really) !!! Need to differentiate between nu_2 and nu_6
+nu   = 2e-10;   % Viscosity          !!! Check which type it is? (Just for label really) !!! Need to differentiate between nu_2 and nu_6
 beta = 1;      % c_s/v_A
-sigma = 250;   % Forcing strength, sigma=0 turns off forcing
+sigma = 12;   % Forcing strength, sigma=0 turns off forcing
 % Filter for forcing, k2filter, is defined in initial condition
-init_energy = 0.;
+init_energy = 0;
 
 LX = 1;     % Box-size (x-direction)
 LY = 1;     % Box-size (y-direction)
 LZ = 1;     % Box-size (z-direction)
 
-NX = 32;       % Resolution in x
-NY = 32;       % Resolution in y
-NZ = 32;       % Resolution in z
+NX = 48;       % Resolution in x
+NY = 48;       % Resolution in y
+NZ = 48;       % Resolution in z
 N  = NX*NY*NZ;
 
 if VariableTimeStep == 1
@@ -114,7 +114,7 @@ ZG = permute(k, [2 1 3]);
 s_plus_new  = 1;
 s_minus_new = 1;
 % Another way to create initial condition
-k2filter    = sqrt(abs(k2)) < 5*pi/LX & pi/LX < sqrt(abs(k2)) & abs(KX) > 0  & abs(KY) > 0  & abs(KZ) > 0;
+k2filter    = sqrt(abs(k2)) < 3*pi/LX & pi/LX < sqrt(abs(k2)) & abs(KX) > 0  & abs(KY) > 0  & abs(KZ) > 0;
 Lap_z_plus  = k2_perp.*k2filter.*fftn(randn(NX,NY,NZ));
 Lap_z_minus = k2_perp.*k2filter.*fftn(randn(NX,NY,NZ));
 
@@ -270,12 +270,8 @@ while t<TF && n<Cutoff
     end
     
     %%% Forcing %%%
-    if sigma>0
-        force_p = sigma * k2filter.*fftn(randn(NX,NY,NZ));
-        force_m = sigma * k2filter.*fftn(randn(NX,NY,NZ));
-    else 
-        force_p=0;force_m=0;
-    end
+    force_p = sigma * k2filter.*fftn(randn(NX,NY,NZ));
+    force_m = sigma * k2filter.*fftn(randn(NX,NY,NZ));
     
     %%% Compute Solution at the next step %%%
     
@@ -323,20 +319,8 @@ while t<TF && n<Cutoff
 %% Plotting %%%
     if k == TScreen
         PlotGrid(Lap_z_plus_new, Lap_z_minus_new, s_plus_new, s_minus_new, k2_poisson, Fullscreen, SlowModes, SavePlot, PlotDirectory, XG, YG, ZG, LX, LZ, dy, t, KX)
-        figure(2)
+                figure(2)
 
-        if VariableTimeStep == 1
-            % Cut off trailing zeros from time and energy vectors
-            timep = time(2:find(time,1,'last'));
-            E_z_plusp  = E_z_plus(1:length(timep));
-            E_z_minusp = E_z_minus(1:length(timep));
-        end
-        plot(timep, E_z_plusp, timep, E_z_minusp)
-        title('|\nabla_{\perp}\zeta^{\pm}|^2  "Energy"')
-        legend('\zeta^+', '\zeta^-', 'Location', 'Best')
-        xlabel('Time')
-        drawnow
-        
         k=0;
     end
     
