@@ -7,7 +7,7 @@ function RMHD_3D_Turbulence
 
 %% Options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 SlowModes        = 0;         % Calculate evolution of compressive modes in run
-TF               = 2;         % Final Time
+TF               = 1.5;         % Final Time
 NormalisedEnergy = 1;         % Scales initial condition so u_perp ~ B_perp ~ 1
 HyperViscosity   = 1;         % Use nu*(k^6) instead of nu*(k^2) for dissipation
 
@@ -18,6 +18,7 @@ OutputDirectory  = './Turbulence';   % Directory .mat file above is saved to
 VariableTimeStep = 1;         % Enable variable time step, else dt must be defined below
 % VARIABLE time step
 Cutoff           = 1000000;    % Maximum number of iterations for variable time step
+dtCutoff         = 1e-6;      % If dt gets smaller than dtCutoff, run will stop
 CFL              = 0.13;      % Courant Number
 % FIXED time step
 dt               = 1e-4;      % Time Step (For fixed time step runs)
@@ -31,16 +32,16 @@ EnergyPlot       = 0;         % Plots energy when run has completed
 
 %% Paramaters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 va   = 1;      % Alfven velocity
-nu   = 1e-11;   % Viscosity          !!! Check which type it is? (Just for label really) !!! Need to differentiate between nu_2 and nu_6
+nu   = (1/150)*2e-10;   % Viscosity          !!! Check which type it is? (Just for label really) !!! Need to differentiate between nu_2 and nu_6
 beta = 1;      % c_s/v_A
 
 LX = 1;     % Box-size (x-direction)
 LY = 1;     % Box-size (y-direction)
 LZ = 1;     % Box-size (z-direction)
 
-NX = 48;       % Resolution in x
-NY = 48;       % Resolution in y
-NZ = 48;       % Resolution in z
+NX = 128;       % Resolution in x
+NY = 128;       % Resolution in y
+NZ = 128;       % Resolution in z
 N  = NX*NY*NZ;
 
 if VariableTimeStep == 1
@@ -93,7 +94,7 @@ kzmax    = max(abs(kz));
 
 if VariableTimeStep == 0
     if HyperViscosity == 1
-        exp_correct = exp(dt*nu*k6); %%% !!! Can include linear term !!!
+        exp_correct = exp(dt*nu*k6);
     else
         exp_correct = exp(dt*nu*k2);
     end
@@ -107,19 +108,10 @@ XG = permute(i, [2 1 3]);
 YG = permute(j, [2 1 3]);
 ZG = permute(k, [2 1 3]);
 
-% Lap_z_plus  = k2_perp.*fftn(0.1*cos(2*pi*(4*i/LX - 2*j/LY - k/LZ)));
-% Lap_z_minus = k2_perp.*fftn(0.1*sin(2*pi*(i/LX + j/LY + k/LZ)));
-
-% Lap_zeta_plus  = k2_perp.*fftn(1);
-% Lap_zeta_minus = k2_perp.*fftn(0);
-
-if SlowModes == 1
-    s_plus  = fftn(0.01*cos(-2*pi*(k/LZ+4*i/LX)));
-    s_minus = fftn(0.01*sin( 2*pi*(3*j/LY+k/LZ)));
-end
-
+s_plus_new  = 1;
+s_minus_new = 1;
 % Another way to create initial condition
-k2filter    = sqrt(abs(k2)) < 10*pi/LX;
+k2filter    = sqrt(abs(k2)) < 3*pi/LX & pi/LX < sqrt(abs(k2));
 Lap_z_plus  = k2_perp.*k2filter.*fftn(randn(NX,NY,NZ));
 Lap_z_minus = k2_perp.*k2filter.*fftn(randn(NX,NY,NZ));
 
@@ -179,7 +171,7 @@ while t<TF && n<Cutoff
     l=l+1;
     
     if VariableTimeStep == 1
-        %% Update time-step        (!!Requires changing time vector!!)
+        %% Update time-step
         
         phi = abs((0.5)*(Lap_z_plus + Lap_z_minus)./k2_poisson);
         phi_x = real(ifftn(KX.*phi));    % y component of u_perp
@@ -200,6 +192,12 @@ while t<TF && n<Cutoff
         dt_grid = CFL./(gamma_NL + gamma_L);
         
         dt = min(dt_grid(:));
+        
+        if dt<dtCutoff
+           disp(['Time step got too small at t = ' num2str(t)]) 
+           disp(['Stopping run...'])
+           return
+        end
         
         dt_save(n) = dt;
         time(n+1)  = time(n) + dt;
@@ -283,18 +281,19 @@ while t<TF && n<Cutoff
         s_minus_new = s_minus_new.*exp_correct;
     end
     
-    %%% Energy %%%
+    %%% Conserved Quantities %%%
     
     E_z_plus_grid  = (abs(Lap_z_plus_new).^2)./abs(k2_poisson);
     E_z_minus_grid = (abs(Lap_z_minus_new).^2)./abs(k2_poisson);
     
-    E_zp_diss_grid = abs(Lap_z_plus_new).^2;
-    E_zm_diss_grid = abs(Lap_z_minus_new).^2;
+%     E_zp_diss_grid = abs(Lap_z_plus_new).^2;
+%     E_zm_diss_grid = abs(Lap_z_minus_new).^2;
     
     E_z_plus(n)  = (0.5)*sum(E_z_plus_grid(:))*(grid_int);
     E_z_minus(n) = (0.5)*sum(E_z_minus_grid(:))*(grid_int);
-    E_zp_diss(n) = nu*sum(E_zp_diss_grid(:))*grid_int;
-    E_zm_diss(n) = nu*sum(E_zm_diss_grid(:))*grid_int;
+    
+%     E_zp_diss(n) = nu*sum(E_zp_diss_grid(:))*grid_int;
+%     E_zm_diss(n) = nu*sum(E_zm_diss_grid(:))*grid_int;
     
     if SlowModes == 1
         E_s_plus_grid     = (abs(s_plus_new)).^2;
@@ -303,20 +302,106 @@ while t<TF && n<Cutoff
         E_s_plus(n)     = (0.5)*sum(E_s_plus_grid(:))*(grid_int);
         E_s_minus(n)    = (0.5)*sum(E_s_minus_grid(:))*(grid_int);
     end
-       
-    t=t+dt
+             
+    t=t+dt;
     
-    %% Plotting %%%         %%% Can add better slow mode switch (get rid of 2 subplots)
+%% Plotting %%%
     if k == TScreen
+        PlotGrid(Lap_z_plus_new, Lap_z_minus_new, s_plus_new, s_minus_new, k2_poisson, Fullscreen, SlowModes, SavePlot, PlotDirectory, XG, YG, ZG, LX, LZ, dy, t, KX)
+        k=0;
+    end
+    
+%% Save Output %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    if l == TOutput && SaveOutput == 1   % To save a new variable simply add line, "output.variable = variable"
+        m=m+1;
         
+        output.time = t;
+        if VariableTimeStep == 1
+            output.timevec = time;
+        end
+        % Zeta and Z
+        output.Lzp = Lap_z_plus_new;
+        output.Lzm = Lap_z_minus_new;
+        if SlowModes == 1
+            output.sp = s_plus_new;
+            output.sm = s_minus_new;
+        end
+        % Save Energies
+        output.Ezp = E_z_plus;
+        output.Ezm = E_z_minus;
+        if SlowModes == 1
+            output.Esp = E_s_plus;
+            output.Esm = E_s_minus;
+        end
+        
+        save([OutputDirectory '/' RunFolder '/' num2str(m)], 'output')
+        l=0;
+    end
+
+%% Update variables for next timestep %%%%%%%%%%%%%%%%%%%%%
+    n = n+1;
+    Lap_z_plus  = Lap_z_plus_new;
+    Lap_z_minus = Lap_z_minus_new;
+    if SlowModes == 1
+        s_plus         = s_plus_new;
+        s_minus        = s_minus_new;
+    end
+end
+
+%% Energy Plot %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if EnergyPlot == 1
+    if VariableTimeStep == 1
+        % Cut off trailing zeros from time and energy vectors
+        time = time(2:find(time,1,'last'));
+        E_z_plus  = E_z_plus(1:length(time));
+        E_z_minus = E_z_minus(1:length(time));
+        E_s_plus  = E_s_plus(1:length(time));
+        E_s_minus = E_s_minus(1:length(time));
+        E_zp_diss = E_zp_diss(1:length(time));
+        E_zm_diss = E_zm_diss(1:length(time));
+    end
+    
+    figure(2)
+    if SlowModes == 1
+        subplot(1,2,1)
+        plot(time, E_z_plus, time, E_z_minus)
+        title('|\nabla_{\perp}\zeta^{\pm}|^2  "Energy"')
+        legend('\zeta^+', '\zeta^-', 'Location', 'Best')
+        xlabel('Time')
+        axis([0 TF 0 1.1*max([E_z_plus E_z_minus])])
+        
+        subplot(1,2,2)
+        plot(time, E_s_plus, time, E_s_minus)
+        title('|\nabla_{\perp}\z^{\pm}|^2  "Energy"')
+        legend('z^+', 'z^-', 'Location', 'Best')
+        xlabel('Time')
+        axis([0 TF 0 1.1*max([E_s_plus E_s_minus])])
+    else
+        plot(time, E_z_plus, time, E_z_minus)
+        title('|\nabla_{\perp}\zeta^{\pm}|^2  "Energy"')
+        legend('\zeta^+', '\zeta^-', 'Location', 'Best')
+        xlabel('Time')
+%         axis([0 TF 0 1.1*max([E_z_plus E_z_minus])])
+    end
+end
+
+end
+
+function PlotGrid(Lap_z_plus_new, Lap_z_minus_new, s_plus_new, s_minus_new, k2_poisson, Fullscreen, SlowModes, SavePlot, PlotDirectory, XG, YG, ZG, LX, LZ, dy, t, KX)
+
         %Go back to real space for plotting
-        zp  = double(permute(real(ifftn(Lap_z_plus_new./k2_poisson)),[2,1,3]));
-        zm  = double(permute(real(ifftn(Lap_z_minus_new./k2_poisson)),[2,1,3]));
+        zp  = double(permute(real(ifftn(KX.*Lap_z_plus_new./k2_poisson)),[2,1,3]));
+        zm  = double(permute(real(ifftn(KX.*Lap_z_minus_new./k2_poisson)),[2,1,3]));
+        
+        zp = (0.5)*(zp + zm);
+%         zp = 0.5*(zp + zm);
         if SlowModes == 1
             sp     = double(permute(real(ifftn(s_plus_new)),[2,1,3]));
             sm     = double(permute(real(ifftn(s_minus_new)),[2,1,3]));
         end
         figure(1)
+        clf
         if Fullscreen == 1
             set(gcf, 'Units', 'Normalized', 'OuterPosition', [0, 0.04, 1, 0.96])        % Makes figure fullscreen
         end
@@ -420,77 +505,5 @@ while t<TF && n<Cutoff
         if SavePlot == 1
             saveas(gcf, [PlotDirectory num2str(t, '%10f') '.jpg'])
         end
-        k=0;
-    end
-    
-%% Save Output %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    if l == TOutput && SaveOutput == 1   % To save a new variable simply add line, "output.variable = variable"
-        m=m+1;
         
-        output.time = t;
-        if VariableTimeStep == 1
-            output.timevec = time;
-        end
-        % Zeta and Z
-        output.Lzp = Lap_z_plus_new;
-        output.Lzm = Lap_z_minus_new;
-        if SlowModes == 1
-            output.sp = s_plus_new;
-            output.sm = s_minus_new;
-        end
-        % Save Energies
-        output.Ezp = E_z_plus;
-        output.Ezm = E_z_minus;
-        if SlowModes == 1
-            output.Esp = E_s_plus;
-            output.Esm = E_s_minus;
-        end
-        
-        save([OutputDirectory '/' RunFolder '/' num2str(m)], 'output')
-        l=0;
-    end
-
-%% Update variables for next timestep %%%%%%%%%%%%%%%%%%%%%
-    n = n+1;
-    Lap_z_plus  = Lap_z_plus_new;
-    Lap_z_minus = Lap_z_minus_new;
-    if SlowModes == 1
-        s_plus         = s_plus_new;
-        s_minus        = s_minus_new;
-    end
-end
-
-%% Energy Plot %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if EnergyPlot == 1
-    if VariableTimeStep == 1
-        % Cut off trailing zeros from time and energy vectors
-        time = time(2:find(time,1,'last'));
-        E_z_plus  = E_z_plus(1:length(time));
-        E_z_minus = E_z_minus(1:length(time));
-        E_s_plus  = E_s_plus(1:length(time));
-        E_s_minus = E_s_minus(1:length(time));
-    end
-    
-    figure(2)
-    if SlowModes == 1
-        subplot(1,2,1)
-        plot(time, E_z_plus, time, E_z_minus)
-        title('\zeta^{\pm} "Energy"')
-        legend('\zeta^+', '\zeta^-', 'Location', 'Best')
-        xlabel('Time')
-        axis([0 TF 0 1.1*max([E_z_plus E_z_minus])])
-        
-        subplot(1,2,2)
-        plot(time, E_s_plus, time, E_s_minus)
-        title('z^{\pm} "Energy"')
-        legend('z^+', 'z^-', 'Location', 'Best')
-        xlabel('Time')
-        axis([0 TF 0 1.1*max([E_s_plus E_s_minus])])
-    else
-        plot(time, E_z_plus, time, E_z_minus)
-        title('\zeta^{\pm} "Energy"')
-        legend('\zeta^+', '\zeta^-', 'Location', 'Best')
-        xlabel('Time')
-        axis([0 TF 0 1.1*max([E_z_plus E_z_minus])])
-    end
 end

@@ -1,26 +1,26 @@
 function spectrumMATLAB()
 
+%%% Data Directory %%%
 Directory = './Turbulence/';
-Folder    = '2020-02-07 13-50-36/';
+Folder    = '2020-02-12 13-39-39/';
 
 filename = @(n) [Directory Folder sprintf('%u',n) '.mat'];
 
+%%% Read initialdata from 0.mat %%%
 Dinit = dir([Directory Folder '*.mat']);
-Nfiles = length(Dinit);
+Nfiles = length(Dinit)-1;       % '-1' accounts for 0.mat
 
 Init = load(filename(0));
 input = Init.input;
 
 KX = input.KX; KY = input.KY; KZ = input.KZ;
-
-% Kmag = sqrt(abs(KX).^2 + abs(KY).^2 + abs(KZ).^2); % |K|
-Kperp = sqrt(abs(KY).^2 + abs(KZ).^2); % |K_perp|
-Kpois = Kperp;
-Kpois(1,1,:) = 1;
-% Kprl = abs(KX);
-Kspec = Kperp; % Choose Kmag or Kperp
+[NX, NY, NZ] = size(KX);
+Kperp = sqrt(abs(KX).^2 + abs(KY).^2); % |K_perp|
+Kspec = Kperp;
+k2_poisson = KX.^2 + KY.^2;
+k2_poisson(1,1,:) = 1;
 % Bins for k
-kgrid = [0:(2*pi/(input.Parameters.LY)):max(abs(KY(:)))].'+1e-4; %
+kgrid = (0:(2*pi/(input.Parameters.LY)):max(abs(KY(:)))).'+1e-4; %
 
 % To hold the spectrum
 S.Nk = length(kgrid)-1;
@@ -33,46 +33,41 @@ S.nbin = spect1D(oneG,oneG,Kspec,kgrid)*numel(oneG)^2;
 S.nnorm = S.nbin./S.kgrid.^2; % k^2 accounts for the fact that in 3D, number of modes in shell increases with k^2
 S.nnorm = S.nnorm/mean(S.nnorm); % Normalization by number of modes
 
-m3 = @(a) mean(mean(mean(a)));
+fields = {'Lzp','Lzm','EK', 'KX', 'KY'};
 
-% Average over all the snapshots
-ns = 0;
-
-fields = {'Lzp','Lzm','EK'};%,'vel3','Bcc1','Bcc2','Bcc3','EK','EM','B','rho'};
-
+%%% Initialise Plot %%%
 set(gcf, 'Units', 'Normalized', 'OuterPosition', [0.5, 0.4, 0.3, 0.6]);
-loglog(S.kgrid, S.kgrid.^(-5/3),'k:' )
+loglog(S.kgrid, S.kgrid.^(-5/3),'k:')
 
-for nnn = 1:10:Nfiles
+%%% Calculate Spectra %%%
+for nn = 1:5:Nfiles
     for var = fields;S.(var{1}) = 0;end
     
-%     disp(['Doing ' Folder ' nnn = ' num2str(nnn)])      %<<<<< Change wording
-    try 
-        D = load(filename(nnn));
-        disp(nnn)
-    catch 
-        warning(['Didnt find the file ' filename(nnn)])
+    try
+        D = load(filename(nn));
+        disp(['    - ' num2str(nn) ' of ' num2str(Nfiles)])
+    catch
+        warning(['Didnt find the file ' filename(nn) '.mat'])
         break
     end
-   
-    for var = {'Lzm', 'Lzm'}
-        ft = D.output.(var{1});
-        S.(var{1}) = S.(var{1}) + spect1D(ft,ft,Kspec,kgrid);
-        S.EK = S.EK + S.(var{1}); % Total spectrum is the sum of each component
-    end
-    hold on
-    loglog(S.kgrid, S.EK, S.kgrid, S.kgrid.^(-5/3),'k:' )
-ylabel('$E_K$','interpreter','latex')
-xlabel('$k$','interpreter','latex')
-drawnow
     
-    ns = ns+1;
-%     fraction = ns/(Nfiles-1);
-%     waitbar(fraction)         % Creates a 'Loading bar' showing progress of code through files
+    for var = {'KX', 'KY'}
+        zp = D.output.Lzp./k2_poisson;
+        zm = D.output.Lzm./k2_poisson;
+        uperp = (0.5)*input.(var{1}).*(zp + zm);
+        S.(var{1}) = S.(var{1}) + spect1D(uperp,uperp,Kspec,kgrid);
+        S.EK = S.EK + S.(var{1}); % Total spectrum is the sum of each component
+        S.EK = S.EK.*S.nnorm;
+    end
+    
+    hold on
+    loglog(S.kgrid, S.EK)
+    ylabel('$E_K$','interpreter','latex')
+    xlabel('$k$','interpreter','latex')
+    drawnow
+    
 end
-for var = fields;S.(var{1}) = S.(var{1}).*(S.nnorm/ns);end
-
-
+plot([2*pi*NX/3 2*pi*NX/3], [1e-10, 1e2], 'k:')
 end
 
 function out = spect1D(v1,v2,K,kgrid)
