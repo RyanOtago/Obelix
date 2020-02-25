@@ -1,13 +1,13 @@
 function PostPlot()
 
 Directory = './Turbulence/';
-Folder    = '2020-02-12 13-39-39/';
+Folder    = '2020-02-14 11-35-57/';
 
 PlotChoice    = 2;      % 1 for Energy v Time of run;  2 for visualisation of zeta^p/m
 
 SinglePlot    = 1;      % Want to change this as quickly as possible
 if SinglePlot == 1
-    Number = 1;      % Chooose single file you want to plot figures for
+    Number = 663;      % Chooose single file you want to plot figures for
 end
 Fullscreen    = 1;
 

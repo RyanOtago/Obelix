@@ -2,7 +2,7 @@ function spectrumMATLAB()
 
 %%% Data Directory %%%
 Directory = './Turbulence/';
-Folder    = '2020-02-12 13-39-39/';
+Folder    = '2020-02-14 15-38-23/';
 
 filename = @(n) [Directory Folder sprintf('%u',n) '.mat'];
 
@@ -40,7 +40,7 @@ set(gcf, 'Units', 'Normalized', 'OuterPosition', [0.5, 0.4, 0.3, 0.6]);
 loglog(S.kgrid, S.kgrid.^(-5/3),'k:')
 
 %%% Calculate Spectra %%%
-for nn = 1:5:Nfiles
+for nn = 1:100:Nfiles
     for var = fields;S.(var{1}) = 0;end
     
     try
@@ -56,7 +56,7 @@ for nn = 1:5:Nfiles
         zm = D.output.Lzm./k2_poisson;
         uperp = (0.5)*input.(var{1}).*(zp + zm);
         S.(var{1}) = S.(var{1}) + spect1D(uperp,uperp,Kspec,kgrid);
-        S.EK = S.EK + S.(var{1}); % Total spectrum is the sum of each component
+        S.EK = S.EK + S.(var{1})/2; % Total spectrum is the sum of each component
         S.EK = S.EK.*S.nnorm;
     end
     

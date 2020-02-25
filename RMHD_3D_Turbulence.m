@@ -7,11 +7,11 @@ function RMHD_3D_Turbulence
 
 %% Options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 SlowModes        = 0;         % Calculate evolution of compressive modes in run
-TF               = 4;         % Final Time
+TF               = 30;         % Final Time
 NormalisedEnergy = 1;         % Scales initial condition so u_perp ~ B_perp ~ 1
 HyperViscosity   = 1;         % Use nu*(k^6) instead of nu*(k^2) for dissipation
 
-SaveOutput       = 0;         % Writes energies, u and B components for each time step to a .mat file
+SaveOutput       = 1;         % Writes energies, u and B components for each time step to a .mat file
 TOutput          = 200;        % Number of iterations before output
 OutputDirectory  = './Turbulence';   % Directory .mat file above is saved to
 
@@ -24,7 +24,7 @@ CFL              = 0.13;      % Courant Number
 dt               = 1e-4;      % Time Step (For fixed time step runs)
 
 % PLOTTING
-TScreen          = 1000;         % Screen Update Interval Count (NOTE: plotting is usually slow) (Set to 0 for no plotting)
+TScreen          = 0;         % Screen Update Interval Count (NOTE: plotting is usually slow) (Set to 0 for no plotting)
 Fullscreen       = 0;         % Makes plot figure fullscreen (Recommended if saving plots) !!! Forces figure to foreground through run !!!
 SavePlot         = 0;         % Saves figure as a .jpg file everytime a new plot is created
 PlotDirectory    = './gif/';  % Directory the plot is saved to
@@ -32,9 +32,9 @@ EnergyPlot       = 0;         % Plots energy when run has completed
 
 %% Paramaters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 va   = 1;      % Alfven velocity
-nu   = (2/3)^(5.3333)*2e-10;   % Viscosity          !!! Check which type it is? (Just for label really) !!! Need to differentiate between nu_2 and nu_6
+nu   = (1/180)*2e-10;   % Viscosity          !!! Check which type it is? (Just for label really) !!! Need to differentiate between nu_2 and nu_6
 beta = 1;      % c_s/v_A
-sigma = 250;   % Forcing strength, sigma=0 turns off forcing
+sigma = 240;   % Forcing strength, sigma=0 turns off forcing
 % Filter for forcing, k2filter, is defined in initial condition
 init_energy = 0.;
 
@@ -42,9 +42,9 @@ LX = 1;     % Box-size (x-direction)
 LY = 1;     % Box-size (y-direction)
 LZ = 1;     % Box-size (z-direction)
 
-NX = 32;       % Resolution in x
-NY = 32;       % Resolution in y
-NZ = 32;       % Resolution in z
+NX = 128;       % Resolution in x
+NY = 128;       % Resolution in y
+NZ = 128;       % Resolution in z
 N  = NX*NY*NZ;
 
 if VariableTimeStep == 1
@@ -52,20 +52,24 @@ if VariableTimeStep == 1
     dt_save      = zeros(1, Cutoff);
     E_z_plus     = zeros(1, Cutoff);
     E_z_minus    = zeros(1, Cutoff);
-    E_s_plus     = zeros(1, Cutoff);
-    E_s_minus    = zeros(1, Cutoff);
-    E_zp_diss    = zeros(1, Cutoff);
-    E_zm_diss    = zeros(1, Cutoff);
+    if SlowModes == 1
+        E_s_plus     = zeros(1, Cutoff);
+        E_s_minus    = zeros(1, Cutoff);
+    end
+%     E_zp_diss    = zeros(1, Cutoff);
+%     E_zm_diss    = zeros(1, Cutoff);
     
 else
     time = dt:dt:TF;
     
     E_z_plus     = zeros(1, length(time));
     E_z_minus    = zeros(1, length(time));
-    E_s_plus     = zeros(1, length(time));
-    E_s_minus    = zeros(1, length(time));
-    E_zp_diss    = zeros(1, length(time));
-    E_zm_diss    = zeros(1, length(time));
+    if SlowModes == 1
+        E_s_plus     = zeros(1, length(time));
+        E_s_minus    = zeros(1, length(time));
+    end
+%     E_zp_diss    = zeros(1, length(time));
+%     E_zm_diss    = zeros(1, length(time));
 end
 
 dx = LX/NX;
@@ -162,6 +166,8 @@ if SaveOutput == 1
     input.Parameters = Parameters;
     save([OutputDirectory '/' RunFolder '/' num2str(m)], 'input')
 end
+
+clear kz_plus kz_minus E_u_grid E_b_grid input kx ky kz
 
 %% Solver %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
