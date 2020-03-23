@@ -1,5 +1,7 @@
 function spectrumMATLAB()
 
+%%% Takes output from RMHD_3D
+
 %%% Data Directory %%%
 Directory = './Turbulence/';
 Folder    = '2020-02-14 15-38-23/';

@@ -6,18 +6,18 @@ function RMHD_3D_Turbulence
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-SlowModes        = 0;         % Calculate evolution of compressive modes in run
-TF               = 30;         % Final Time
+SlowModes        = 1;         % Calculate evolution of compressive modes in run
+TF               = 20;        % Final Time
 NormalisedEnergy = 1;         % Scales initial condition so u_perp ~ B_perp ~ 1
 HyperViscosity   = 1;         % Use nu*(k^6) instead of nu*(k^2) for dissipation
 
 SaveOutput       = 1;         % Writes energies, u and B components for each time step to a .mat file
-TOutput          = 200;        % Number of iterations before output
+TOutput          = 200;       % Number of iterations before output
 OutputDirectory  = './Turbulence';   % Directory .mat file above is saved to
 
-VariableTimeStep = 1;         % Enable variable time step, else dt must be defined below
 % VARIABLE time step
-Cutoff           = 1000000;    % Maximum number of iterations for variable time step
+VariableTimeStep = 1;         % Enable variable time step, else dt must be defined below
+Cutoff           = 1000000;   % Maximum number of iterations for variable time step
 dtCutoff         = 1e-6;      % If dt gets smaller than dtCutoff, run will stop
 CFL              = 0.13;      % Courant Number
 % FIXED time step
@@ -36,7 +36,7 @@ nu   = (1/180)*2e-10;   % Viscosity          !!! Check which type it is? (Just f
 beta = 1;      % c_s/v_A
 sigma = 240;   % Forcing strength, sigma=0 turns off forcing
 % Filter for forcing, k2filter, is defined in initial condition
-init_energy = 0.;
+init_energy = 1;
 
 LX = 1;     % Box-size (x-direction)
 LY = 1;     % Box-size (y-direction)
@@ -115,30 +115,38 @@ XG = permute(i, [2 1 3]);
 YG = permute(j, [2 1 3]);
 ZG = permute(k, [2 1 3]);
 
-s_plus_new  = 1;
-s_minus_new = 1;
+if SlowModes == 0
+    s_plus_new  = 1;
+    s_minus_new = 1;
+end
 % Another way to create initial condition
 k2filter    = sqrt(abs(k2)) < 5*pi/LX & pi/LX < sqrt(abs(k2)) & abs(KX) > 0  & abs(KY) > 0  & abs(KZ) > 0;
 Lap_z_plus  = k2_perp.*k2filter.*fftn(randn(NX,NY,NZ));
 Lap_z_minus = k2_perp.*k2filter.*fftn(randn(NX,NY,NZ));
 
-% s_plus = k2filter.*fftn(0.1*randn(NX,NY,NZ));
-% s_minus = k2filter.*fftn(0.1*randn(NX,NY,NZ));
+if SlowModes == 1
+    s_plus = k2filter.*fftn(0.1*randn(NX,NY,NZ));
+    s_minus = k2filter.*fftn(0.1*randn(NX,NY,NZ));
+end
 
 if NormalisedEnergy == 1
     kz_plus  = Lap_z_plus./sqrt(k2_poisson);
     kz_minus = Lap_z_minus./sqrt(k2_poisson);
     
-    E_u_grid = abs(kz_plus).^2;
-    E_b_grid = abs(kz_minus).^2;
-
-    E_u = (0.5)*sum(E_u_grid(:))*(grid_int);
-    E_b = (0.5)*sum(E_b_grid(:))*(grid_int);
-
-    Normalise = sqrt(mean([E_u E_b]));
+    E_zplus_grid  = abs(kz_plus).^2;
+    E_zminus_grid = abs(kz_minus).^2;
+    E_splus_grid  = abs(s_plus).^2;
+    E_sminus_grid = abs(s_minus).^2;
     
-    kz_plus  = init_energy*(1/Normalise)*kz_plus;
-    kz_minus = init_energy*(1/Normalise)*kz_minus;
+    E_zp = (0.5)*sum(E_zplus_grid(:))*(grid_int);
+    E_zm = (0.5)*sum(E_zminus_grid(:))*(grid_int);
+    E_sp = (0.5)*sum(E_splus_grid(:))*grid_int;
+    E_sm = (0.5)*sum(E_sminus_grid(:))*grid_int;
+    
+    kz_plus  = init_energy*(1/sqrt(E_zp))*kz_plus;
+    kz_minus = init_energy*(1/sqrt(E_zm))*kz_minus;
+    s_plus   = init_energy*(1/sqrt(E_sp))*s_plus;
+    s_minus  = init_energy*(1/sqrt(E_sm))*s_minus;
 
     Lap_z_plus  = sqrt(k2_perp).*kz_plus;
     Lap_z_minus = sqrt(k2_perp).*kz_minus;
@@ -299,9 +307,6 @@ while t<TF && n<Cutoff
         s_minus_new = s_minus_new.*exp_correct;
     end
     
-    
-    
-    
     %%% Conserved Quantities %%%
     
     E_z_plus_grid  = (abs(Lap_z_plus_new).^2)./abs(k2_poisson);
@@ -337,6 +342,7 @@ while t<TF && n<Cutoff
             E_z_plusp  = E_z_plus(1:length(timep));
             E_z_minusp = E_z_minus(1:length(timep));
         end
+        
         plot(timep, E_z_plusp, timep, E_z_minusp)
         title('|\nabla_{\perp}\zeta^{\pm}|^2  "Energy"')
         legend('\zeta^+', '\zeta^-', 'Location', 'Best')
@@ -391,10 +397,12 @@ if EnergyPlot == 1
         time = time(2:find(time,1,'last'));
         E_z_plus  = E_z_plus(1:length(time));
         E_z_minus = E_z_minus(1:length(time));
-        E_s_plus  = E_s_plus(1:length(time));
-        E_s_minus = E_s_minus(1:length(time));
-        E_zp_diss = E_zp_diss(1:length(time));
-        E_zm_diss = E_zm_diss(1:length(time));
+        if SlowModes == 1
+            E_s_plus  = E_s_plus(1:length(time));
+            E_s_minus = E_s_minus(1:length(time));
+        end
+%         E_zp_diss = E_zp_diss(1:length(time));
+%         E_zm_diss = E_zm_diss(1:length(time));
     end
     
     figure(2)
@@ -408,7 +416,7 @@ if EnergyPlot == 1
         
         subplot(1,2,2)
         plot(time, E_s_plus, time, E_s_minus)
-        title('|\nabla_{\perp}\z^{\pm}|^2  "Energy"')
+        title('|\nabla_{\perp}z^{\pm}|^2  "Energy"')
         legend('z^+', 'z^-', 'Location', 'Best')
         xlabel('Time')
         axis([0 TF 0 1.1*max([E_s_plus E_s_minus])])

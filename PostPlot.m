@@ -7,7 +7,7 @@ PlotChoice    = 2;      % 1 for Energy v Time of run;  2 for visualisation of ze
 
 SinglePlot    = 1;      % Want to change this as quickly as possible
 if SinglePlot == 1
-    Number = 663;      % Chooose single file you want to plot figures for
+    Number = 663;       % Chooose single file you want to plot figures for
 end
 Fullscreen    = 1;
 
