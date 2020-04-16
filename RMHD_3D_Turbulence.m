@@ -11,16 +11,17 @@ TF               = 20;        % Final Time
 NormalisedEnergy = 1;         % Scales initial condition so u_perp ~ B_perp ~ 1
 HyperViscosity   = 1;         % Use nu*(k^6) instead of nu*(k^2) for dissipation
 
-SaveOutput       = 1;         % Writes energies, u and B components for each time step to a .mat file
+SaveOutput       = 0;         % Writes energies, u and B components for each time step to a .mat file
 TOutput          = 200;       % Number of iterations before output
 OutputDirectory  = './Turbulence';   % Directory .mat file above is saved to
 
-% VARIABLE time step
+% Time step
 VariableTimeStep = 1;         % Enable variable time step, else dt must be defined below
+% Variable
 Cutoff           = 1000000;   % Maximum number of iterations for variable time step
-dtCutoff         = 1e-6;      % If dt gets smaller than dtCutoff, run will stop
+dtCutoff         = 1e-4;      % If dt gets smaller than dtCutoff, run will stop
 CFL              = 0.13;      % Courant Number
-% FIXED time step
+% Fixed
 dt               = 1e-4;      % Time Step (For fixed time step runs)
 
 % PLOTTING
@@ -32,11 +33,13 @@ EnergyPlot       = 0;         % Plots energy when run has completed
 
 %% Paramaters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 va   = 1;      % Alfven velocity
-nu   = (1/180)*2e-10;   % Viscosity          !!! Check which type it is? (Just for label really) !!! Need to differentiate between nu_2 and nu_6
+nu2   = 0.036;          % Viscosity coefficient for N = 128
+nu6 = (1/180)*2e-10;    % Hyperviscosity coefficient for N = 128
 beta = 1;      % c_s/v_A
-sigma = 240;   % Forcing strength, sigma=0 turns off forcing
+sigma_A = 240;   % Alfven-wave Forcing Strength, sigma=0 turns off forcing
+sigma_S = 240;   % Slow-mode Forcing Strength
 % Filter for forcing, k2filter, is defined in initial condition
-init_energy = 1;
+init_energy = 0;
 
 LX = 1;     % Box-size (x-direction)
 LY = 1;     % Box-size (y-direction)
@@ -82,11 +85,18 @@ bpar = 1/sqrt(1+(1/beta)^2);
 grid_int = dV/N;
 t=0.0;
 
+% Scale nu according to mesh resolution
+if HyperViscosity ==1
+    nu = nu6*(128/NX)^(16/3);
+else
+    nu = nu2*(128/NX)^(4/3);
+end
+
 %% Initialise wavevector grid %%%%%%%%%%%%%%%%%%
 
-kx = (2*I*pi/LX)*[0:((NX/2)-1)  -(NX/2):-1];    % [0, 1, ..., NX/2-1, -NX/2, -NX/2+1, ..., -1]    % This is a formatting convention
-ky = (2*I*pi/LY)*[0:((NY/2)-1)  -(NY/2):-1];
-kz = (2*I*pi/LZ)*[0:((NZ/2)-1)  -(NZ/2):-1];
+kx = (2*I*pi/LX)*[0:((NX/2)-1) -(NX/2):-1];    % [0, 1, ..., NX/2-1, -NX/2, -NX/2+1, ..., -1]    % This is a formatting convention
+ky = (2*I*pi/LY)*[0:((NY/2)-1) -(NY/2):-1];
+kz = (2*I*pi/LZ)*[0:((NZ/2)-1) -(NZ/2):-1];
 [KX, KY, KZ] = ndgrid(kx, ky, kz);
 
 dealias = (LX/(2*pi))*abs(KX) < (1/3)*NX & (LY/(2*pi))*abs(KY) < (1/3)*NY & (LZ/(2*pi))*abs(KZ) < (1/3)*NZ;    % Cutting of frequencies for dealiasing using the 2/3 rule   (2/3)*(N/2)
@@ -98,6 +108,7 @@ k2 = k2_perp + KZ.^2;         % Laplacian in F.S.
 k6 = k2.^3;
 kperpmax = max([abs(kx) abs(ky)]);
 kzmax    = max(abs(kz));
+
 
 if VariableTimeStep == 0
     if HyperViscosity == 1
@@ -212,7 +223,7 @@ while t<TF && n<Cutoff
         
         if dt<dtCutoff
            disp(['Time step got too small at t = ' num2str(t)]) 
-           disp(['Stopping run...'])
+           disp('Stopping run...')
            return
         end
         
@@ -284,24 +295,34 @@ while t<TF && n<Cutoff
     end
     
     %%% Forcing %%%
-    if sigma>0
-        force_p = sigma * k2filter.*fftn(randn(NX,NY,NZ));
-        force_m = sigma * k2filter.*fftn(randn(NX,NY,NZ));
+    
+    if sigma_A>0
+        force_Ap = sigma_A * k2filter.*fftn(randn(NX,NY,NZ));
+        force_Am = sigma_A * k2filter.*fftn(randn(NX,NY,NZ));
+
     else 
-        force_p=0;force_m=0;
+        force_Ap=0;force_Am=0;
+    end
+                
+    if sigma_S>0 && SlowModes == 1
+            force_Sp = sigma_S * k2filter.*fftn(randn(NX,NY,NZ));
+            force_Sm = sigma_S * k2filter.*fftn(randn(NX,NY,NZ));   
+
+    else
+        force_Sp=0;force_Sm=0;
     end
     
     %%% Compute Solution at the next step %%%
     
-    Lap_z_plus_new  = dt*(Lin_z_plus + NL_z_plus) + Lap_z_plus + force_p*sqrt(dt); 
-    Lap_z_minus_new = dt*(Lin_z_minus + NL_z_minus) + Lap_z_minus + force_m*sqrt(dt);
+    Lap_z_plus_new  = dt*(Lin_z_plus + NL_z_plus) + Lap_z_plus + force_Ap*sqrt(dt); 
+    Lap_z_minus_new = dt*(Lin_z_minus + NL_z_minus) + Lap_z_minus + force_Am*sqrt(dt);
     
     Lap_z_plus_new  = Lap_z_plus_new.*exp_correct;
     Lap_z_minus_new = Lap_z_minus_new.*exp_correct;
 
     if SlowModes == 1
-        s_plus_new         = dt*(Lin_s_plus + NL_s_plus) + s_plus;
-        s_minus_new        = dt*(Lin_s_minus + NL_s_minus) + s_minus;
+        s_plus_new         = dt*(Lin_s_plus + NL_s_plus) + s_plus + force_Sp*sqrt(dt);
+        s_minus_new        = dt*(Lin_s_minus + NL_s_minus) + s_minus + force_Sm*sqrt(dt);
         
         s_plus_new  = s_plus_new.*exp_correct;
         s_minus_new = s_minus_new.*exp_correct;
@@ -312,8 +333,8 @@ while t<TF && n<Cutoff
     E_z_plus_grid  = (abs(Lap_z_plus_new).^2)./abs(k2_poisson);
     E_z_minus_grid = (abs(Lap_z_minus_new).^2)./abs(k2_poisson);
     
-%     E_zp_diss_grid = abs(Lap_z_plus_new).^2;
-%     E_zm_diss_grid = abs(Lap_z_minus_new).^2;
+%     E_zp_diss_grid = abs(k2.*Lap_z_plus_new).^2;
+%     E_zm_diss_grid = abs(k2.*Lap_z_minus_new).^2;
     
     E_z_plus(n)  = (0.5)*sum(E_z_plus_grid(:))*(grid_int);
     E_z_minus(n) = (0.5)*sum(E_z_minus_grid(:))*(grid_int);
@@ -354,7 +375,7 @@ while t<TF && n<Cutoff
     
 %% Save Output %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     if l == TOutput && SaveOutput == 1   % To save a new variable simply add line, "output.variable = variable"
-        m=m+1;
+        m=m+1;  % Output counter
         
         output.time = t;
         if VariableTimeStep == 1
@@ -384,8 +405,8 @@ while t<TF && n<Cutoff
     Lap_z_plus  = Lap_z_plus_new;
     Lap_z_minus = Lap_z_minus_new;
     if SlowModes == 1
-        s_plus         = s_plus_new;
-        s_minus        = s_minus_new;
+        s_plus  = s_plus_new;
+        s_minus = s_minus_new;
     end
 end
 
