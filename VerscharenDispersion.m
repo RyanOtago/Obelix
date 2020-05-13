@@ -12,8 +12,8 @@ theta = 3*pi/7;
 
 % delB =  (1/(2*va))*(1+(1/beta)^2)^(-0.5)*(s_plus - s_minus);  % deltaB_parallel/B_0
 % delU =  (1/(2*va))*(s_plus + s_minus);                        % deltaU_parallel/v_A
-% delR = -(1/beta^2)*delB;
-% delP = gamma*delR;
+% delR = -(1/beta^2)*delB;                                      % Density
+% delP = gamma*delR;                                            % Pressure
 
 %% Find Verscharen Coefficient Magnitudes
 
