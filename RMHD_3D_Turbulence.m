@@ -11,15 +11,15 @@ TF               = 20;        % Final Time
 NormalisedEnergy = 1;         % Scales initial condition so u_perp ~ B_perp ~ 1
 HyperViscosity   = 1;         % Use nu*(k^6) instead of nu*(k^2) for dissipation
 
-SaveOutput       = 1;         % Writes energies, u and B components for each time step to a .mat file
-TOutput          = 500;       % Number of iterations before output
+SaveOutput       = 0;         % Writes energies, u and B components for each time step to a .mat file
+TOutput          = 200;       % Number of iterations before output
 OutputDirectory  = './Turbulence';   % Directory .mat file above is saved to
 
 % Time step
 VariableTimeStep = 1;         % Enable variable time step, else dt must be defined below
 % Variable
 Cutoff           = 1000000;   % Maximum number of iterations for variable time step
-dtCutoff         = 1e-6;      % If dt gets smaller than dtCutoff, run will stop
+dtCutoff         = 1e-4;      % If dt gets smaller than dtCutoff, run will stop
 CFL              = 0.13;      % Courant Number
 % Fixed
 dt               = 1e-4;      % Time Step (For fixed time step runs)
@@ -39,7 +39,7 @@ beta = 1;      % c_s/v_A
 sigma_A = 240;   % Alfven-wave Forcing Strength, sigma=0 turns off forcing
 sigma_S = 240;   % Slow-mode Forcing Strength
 % Filter for forcing, k2filter, is defined in initial condition
-init_energy = 1;
+init_energy = 0;
 
 LX = 1;     % Box-size (x-direction)
 LY = 1;     % Box-size (y-direction)
@@ -297,9 +297,11 @@ while t<TF && n<Cutoff
     %%% Forcing %%%
     
     if sigma_A>0
-        force_Ap = sigma_A * k2filter.*fftn(randn(NX,NY,NZ));
-        force_Am = sigma_A * k2filter.*fftn(randn(NX,NY,NZ));
-
+        force_Ap = k2filter.*fftn(randn(NX,NY,NZ));
+        force_Am = k2filter.*fftn(randn(NX,NY,NZ));
+        
+        force_Ap = sigma_A*(force_Ap./sqrt((sum(abs(force_Ap(:)).^2))*(grid_int)));
+        force_Am = sigma_A*(force_Am./sqrt((sum(abs(force_Am(:)).^2))*(grid_int)));
     else 
         force_Ap=0;force_Am=0;
     end
@@ -307,7 +309,6 @@ while t<TF && n<Cutoff
     if sigma_S>0 && SlowModes == 1
             force_Sp = sigma_S * k2filter.*fftn(randn(NX,NY,NZ));
             force_Sm = sigma_S * k2filter.*fftn(randn(NX,NY,NZ));   
-
     else
         force_Sp=0;force_Sm=0;
     end
