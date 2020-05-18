@@ -7,8 +7,8 @@ function RMHD_3D_Turbulence
 
 %% Options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 SlowModes        = 1;         % Calculate evolution of compressive modes in run
-TF               = 20;        % Final Time
-NormalisedEnergy = 1;         % Scales initial condition so u_perp ~ B_perp ~ 1
+TF               = 10;        % Final Time
+NormalisedEnergy = 0;         % Scales initial condition so u_perp ~ B_perp ~ 1
 HyperViscosity   = 1;         % Use nu*(k^6) instead of nu*(k^2) for dissipation
 
 SaveOutput       = 0;         % Writes energies, u and B components for each time step to a .mat file
@@ -19,7 +19,7 @@ OutputDirectory  = './Turbulence';   % Directory .mat file above is saved to
 VariableTimeStep = 1;         % Enable variable time step, else dt must be defined below
 % Variable
 Cutoff           = 1000000;   % Maximum number of iterations for variable time step
-dtCutoff         = 1e-4;      % If dt gets smaller than dtCutoff, run will stop
+dtCutoff         = 1e-5;      % If dt gets smaller than dtCutoff, run will stop
 CFL              = 0.13;      % Courant Number
 % Fixed
 dt               = 1e-4;      % Time Step (For fixed time step runs)
@@ -29,15 +29,15 @@ TScreen          = 0;         % Screen Update Interval Count (NOTE: plotting is 
 Fullscreen       = 0;         % Makes plot figure fullscreen (Recommended if saving plots) !!! Forces figure to foreground through run !!!
 SavePlot         = 0;         % Saves figure as a .jpg file everytime a new plot is created
 PlotDirectory    = './gif/';  % Directory the plot is saved to
-EnergyPlot       = 0;         % Plots energy when run has completed
+EnergyPlot       = 1;         % Plots energy when run has completed
 
 %% Paramaters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 va   = 1;      % Alfven velocity
-nu2   = 0.036;          % Viscosity coefficient for N = 128
+nu2   = 0.036;          % Viscosity coefficient for N = 128                         %%%% I think these coefficients need adjusting?
 nu6 = (1/180)*2e-10;    % Hyperviscosity coefficient for N = 128
 beta = 1;      % c_s/v_A
-sigma_A = 240;   % Alfven-wave Forcing Strength, sigma=0 turns off forcing
-sigma_S = 240;   % Slow-mode Forcing Strength
+sigma_A = 12;   % Alfven-wave Forcing Strength, sigma=0 turns off forcing
+sigma_S = 1;   % Slow-mode Forcing Strength
 % Filter for forcing, k2filter, is defined in initial condition
 init_energy = 0;
 
@@ -45,9 +45,9 @@ LX = 1;     % Box-size (x-direction)
 LY = 1;     % Box-size (y-direction)
 LZ = 1;     % Box-size (z-direction)
 
-NX = 128;       % Resolution in x
-NY = 128;       % Resolution in y
-NZ = 128;       % Resolution in z
+NX = 32;       % Resolution in x
+NY = 32;       % Resolution in y
+NZ = 32;       % Resolution in z
 N  = NX*NY*NZ;
 
 if VariableTimeStep == 1
@@ -86,7 +86,7 @@ grid_int = dV/N;
 t=0.0;
 
 % Scale nu according to mesh resolution
-if HyperViscosity ==1
+if HyperViscosity == 1
     nu = nu6*(128/NX)^(16/3);
 else
     nu = nu2*(128/NX)^(4/3);
@@ -300,15 +300,18 @@ while t<TF && n<Cutoff
         force_Ap = k2filter.*fftn(randn(NX,NY,NZ));
         force_Am = k2filter.*fftn(randn(NX,NY,NZ));
         
-        force_Ap = sigma_A*(force_Ap./sqrt((sum(abs(force_Ap(:)).^2))*(grid_int)));
+        force_Ap = sigma_A*(force_Ap./sqrt((sum(abs(force_Ap(:)).^2))*(grid_int)));     % Normalise forcing term
         force_Am = sigma_A*(force_Am./sqrt((sum(abs(force_Am(:)).^2))*(grid_int)));
     else 
         force_Ap=0;force_Am=0;
     end
                 
     if sigma_S>0 && SlowModes == 1
-            force_Sp = sigma_S * k2filter.*fftn(randn(NX,NY,NZ));
-            force_Sm = sigma_S * k2filter.*fftn(randn(NX,NY,NZ));   
+        force_Sp = sigma_S * k2filter.*fftn(randn(NX,NY,NZ));
+        force_Sm = sigma_S * k2filter.*fftn(randn(NX,NY,NZ));
+        
+        force_Sp = sigma_S*(force_Sp./sqrt((sum(abs(force_Sp(:)).^2))*(grid_int)));
+        force_Sm = sigma_S*(force_Sm./sqrt((sum(abs(force_Sm(:)).^2))*(grid_int)));
     else
         force_Sp=0;force_Sm=0;
     end
