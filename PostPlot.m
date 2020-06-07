@@ -1,17 +1,17 @@
 function PostPlot()
 
 Directory = './Turbulence/';
-Folder    = '2020-04-26 14-44-57/';
+Folder    = '2020-06-05 16-21-51/';
 
-PlotChoice    = 1;      % 1 for Energy v Time of run;  2 for visualisation of zeta^p/m
+PlotChoice    = 2;      % 1 for Energy v Time of run;  2 for visualisation of zeta^p/m
 
 SinglePlot    = 1;      % Want to change this as quickly as possible
 if SinglePlot == 1
-    Number = 376;       % Chooose single file you want to plot figures for
+    Number = 293;       % Chooose single file you want to plot figures for
 end
 Fullscreen    = 1;
 
-SavePlot      = 1;
+SavePlot      = 0;
 PlotDirectory    = './';  % Directory the plot is saved to
 
 filename = @(n) [Directory Folder sprintf('%u',n) '.mat'];
@@ -59,6 +59,9 @@ if PlotChoice == 1      %%% Energy Plot
             Esm = output.Esm;
             Esp = Esp(1:length(t));
             Esm = Esm(1:length(t));
+        else
+            Esp = 0;
+            Esm = 0;
         end
     else
         TSlice = output.time;
@@ -68,7 +71,7 @@ if PlotChoice == 1      %%% Energy Plot
     if SlowModes == 1
         EnergyPlot(Ezp, Ezm, t, TSlice, SlowModes, Esp, Esm)    % Make sure to include drawnow inside function
     else
-        EnergyPlot(Ezp, Ezm, t, TSlice, SlowModes)
+        EnergyPlot(Ezp, Ezm, t, TSlice, SlowModes, Esp, Esm)
     end
     
 elseif PlotChoice == 2  %%% Visualisation
@@ -84,7 +87,7 @@ elseif PlotChoice == 2  %%% Visualisation
         s_plus  = 0;
         s_minus = 0;
     end
-    PlotGrid(Lap_z_plus, Lap_z_minus, k2_poisson, Fullscreen, SlowModes, SavePlot, PlotDirectory, XG, YG, ZG, LX, LZ, dy, t, KX, SlowModes, s_plus, s_minus)
+    PlotGrid(Lap_z_plus, Lap_z_minus, k2_poisson, Fullscreen, SlowModes, SavePlot, PlotDirectory, XG, YG, ZG, LX, LZ, dy, t, KX, s_plus, s_minus)
     if SavePlot == 1
         saveas(gcf, [PlotDirectory num2str(t) '.jpg'])
     end
@@ -94,7 +97,7 @@ else
 end
 end
 
-function EnergyPlot(Ezp, Ezm, time, TSlice, SlowModes, varargin)
+function EnergyPlot(Ezp, Ezm, time, TSlice, SlowModes, Esp, Esm)
 
 if SlowModes == 1
     subplot(1,2,1)
@@ -105,7 +108,7 @@ if SlowModes == 1
     axis([0 TSlice 0 1.1*max([Ezp Ezm])])
     
     subplot(1,2,2)
-    plot(time, E_s_plus, time, E_s_minus)
+    plot(time, Esp, time, Esm)
     title('z^{\pm} "Energy"')
     legend('z^+', 'z^-', 'Location', 'Best')
     xlabel('Time')
@@ -120,7 +123,7 @@ end
 
 end
 
-function PlotGrid(Lap_z_plus, Lap_z_minus, k2_poisson, Fullscreen, SlowModes, SavePlot, PlotDirectory, XG, YG, ZG, LX, LZ, dy, t, KX, varargin)
+function PlotGrid(Lap_z_plus, Lap_z_minus, k2_poisson, Fullscreen, SlowModes, SavePlot, PlotDirectory, XG, YG, ZG, LX, LZ, dy, t, KX, s_plus, s_minus)
 
 %Go back to real space for plotting
 zp  = double(permute(real(ifftn(KX.*Lap_z_plus./k2_poisson)),[2,1,3]));

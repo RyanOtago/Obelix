@@ -4,7 +4,7 @@ function spectrumMATLAB()
 
 %%% Data Directory %%%
 Directory = './Turbulence/';
-Folder    = '2020-02-14 15-38-23/';
+Folder    = '2020-05-28 15-07-08/';
 
 filename = @(n) [Directory Folder sprintf('%u',n) '.mat'];
 
@@ -34,7 +34,7 @@ oneG = ones(size(KX));
 S.nbin = spect1D(oneG,oneG,Kspec,kgrid)*numel(oneG)^2;
 S.nnorm = S.nbin./S.kgrid.^2; % k^2 accounts for the fact that in 3D, number of modes in shell increases with k^2
 S.nnorm = S.nnorm/mean(S.nnorm); % Normalization by number of modes
-
+S.EK = 0;
 fields = {'Lzp','Lzm','EK', 'KX', 'KY'};
 
 %%% Initialise Plot %%%
@@ -42,7 +42,8 @@ set(gcf, 'Units', 'Normalized', 'OuterPosition', [0.5, 0.4, 0.3, 0.6]);
 loglog(S.kgrid, S.kgrid.^(-5/3),'k:')
 
 %%% Calculate Spectra %%%
-for nn = 1:100:Nfiles
+for nn = 1:50:Nfiles
+    clear('S.EK')
     for var = fields;S.(var{1}) = 0;end
     
     try
