@@ -1,7 +1,7 @@
 %% Data Directory %%%
-Directory = '';%'./Turbulence/';
-Folder    = '';%'2020-02-14 15-38-23/';
-Number = 366;     % Number of file we're looking at
+Directory = './Turbulence/Resolution/128/Unchecked/';
+Folder    = '2020-05-28 15-07-08/';
+Number = 504;     % Number of file we're looking at
 
 filename = @(n) [Directory Folder sprintf('%u',n) '.mat'];
 
@@ -56,7 +56,7 @@ delP =  gamma*delR;                                           % Pressure
 
 %% Linear Interpolation
 lstart = [0.8 0.5 0.5];
-ldir = [-0.1 sqrt(0.5) -pi/4]; 
+ldir = [-0.1 sqrt(0.2) (pi^2)/4]; 
 L = [LX, LY, LZ];
 
 [delB_line, length_line] = Interpolate(delB, dx, LX, lstart, ip, jp, kp, L, ldir);
@@ -65,29 +65,34 @@ L = [LX, LY, LZ];
 [delP_line, length_line] = Interpolate(delP, dx, LX, lstart, ip, jp, kp, L, ldir);
 
 % Coefficient Magnitudes
-XiMag_line  = abs(delR_line)./abs(delB_line);
-ChiMag_line = abs(delU_line)./abs(delB_line);
-PsiMag_line = abs(delP_line)./abs(delB_line);
+% XiMag_line  = rms(delR_line./delB_line); % This isn't right
+% ChiMag_line = rms(delU_line./delB_line);
+% PsiMag_line = rms(delP_line./delB_line);
 
 % Coefficient Phases
 
-% n = length(delB_line);
-% time = [0:(n-1)]*dx;        % 'time' array for wavelet spectrum
-% pad = 1;                    % Pads time-series with zeroes for transform
-% dj = 0.25;                  % Fraction of sub-octaves per octave
-% s0 = 2*dt;                  % Starting scale
-% j1 = 7/dj;                  % Do 7 powers-of-two with dj sub-octaves each
-% mother = 'Morlet';          % Wavelet form
-% 
+n = length(delB_line); 
+time = [0:(n-1)]*dx;        % 'time' array for wavelet spectrum (note 
+pad = 1;                    % Pads time-series with zeroes for transform
+dj = 0.25;                  % Fraction of sub-octaves per octave
+s0 = 2*dx;                  % Starting scale 
+j1 = 7/dj;                  % Do 7 powers-of-two with dj sub-octaves each
+mother = 'Morlet';          % Wavelet form
+
 % % Wavelet Transform
-% [delB_WT, periodB, scaleB, coiB] = wavelet(delB_line, dx, pad, dj, s0, j1, mother);
-% [delU_WT, periodU, scaleU, coiU] = wavelet(delU_line, dx, pad, dj, s0, j1, mother);
-% [delR_WT, periodR, scaleR, coiR] = wavelet(delR_line, dx, pad, dj, s0, j1, mother);
-% [delP_WT, periodP, scaleP, coiP] = wavelet(delP_line, dx, pad, dj, s0, j1, mother);
-% 
-% C_UB = conj(delU_WT).*delB_WT;
-% C_RB = conj(delR_WT).*delB_WT;
-% C_PB = conj(delP_WT).*delB_WT;
+[delB_WT, periodB, scaleB, coiB] = wavelet(delB_line, dx, pad, dj, s0, j1, mother);
+[delU_WT, periodU, scaleU, coiU] = wavelet(delU_line, dx, pad, dj, s0, j1, mother);
+[delR_WT, periodR, scaleR, coiR] = wavelet(delR_line, dx, pad, dj, s0, j1, mother);
+[delP_WT, periodP, scaleP, coiP] = wavelet(delP_line, dx, pad, dj, s0, j1, mother);
+
+C_UB = conj(delU_WT).*delB_WT;
+C_RB = conj(delR_WT).*delB_WT;
+C_PB = conj(delP_WT).*delB_WT;
+
+C_UB_Phase = atan( imag(C_UB)./real(C_UB));
+C_RB_Phase = atan( imag(C_RB)./real(C_RB));
+C_PB_Phase = atan( imag(C_PB)./real(C_PB));
+
 
 %% Interpolation Function
 
@@ -108,3 +113,4 @@ end
 itype = 'linear';
 out = interpn(i, j, k,padBoundaries(delA), plist(1,:), plist(2,:), plist(3,:), itype, NaN).';
 end
+

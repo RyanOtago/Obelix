@@ -6,13 +6,13 @@ function RMHD_3D_Turbulence
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 profile on
 %% Options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-SlowModes        = 1;         % Calculate evolution of compressive modes in run
+SlowModes        = 0;         % Calculate evolution of compressive modes in run
 TF               = 10;        % Final Time
 NormalisedEnergy = 0;         % Scales initial condition so u_perp ~ B_perp ~ 1
 HyperViscosity   = 1;         % Use nu*(k^6) instead of nu*(k^2) for dissipation
 
-SaveOutput       = 1;         % Writes energies, u and B components for each time step to a .mat file
-TOutput          = 100;       % Number of iterations before output
+SaveOutput       = 0;         % Writes energies, u and B components for each time step to a .mat file
+TOutput          = 1000;       % Number of iterations before output
 OutputDirectory  = './Turbulence';   % Directory .mat file above is saved to
 
 % Time step
@@ -25,7 +25,7 @@ CFL              = 0.13;      % Courant Number
 dt               = 1e-4;      % Time Step (For fixed time step runs)
 
 % PLOTTING
-TScreen          = 100;         % Screen Update Interval Count (NOTE: plotting is usually slow) (Set to 0 for no plotting)
+TScreen          = 0;         % Screen Update Interval Count (NOTE: plotting is usually slow) (Set to 0 for no plotting)
 Fullscreen       = 0;         % Makes plot figure fullscreen (Recommended if saving plots) !!! Forces figure to foreground through run !!!
 SavePlot         = 0;         % Saves figure as a .jpg file everytime a new plot is created
 PlotDirectory    = './gif/';  % Directory the plot is saved to
@@ -34,9 +34,9 @@ EnergyPlot       = 0;         % Plots energy when run has completed
 %% Paramaters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 va   = 1;      % Alfven velocity
 nu2   = 0.036;          % Viscosity coefficient for N = 128                         %%%% I think these coefficients need adjusting?
-nu6 = (1/185)*2e-10;    % Hyperviscosity coefficient for N = 128        (1/180)*2e-10
+nu6 = 2e-10;    % Hyperviscosity coefficient for N = 32        (1/180)*2e-10
 beta = 1;      % c_s/v_A
-sigma_A = 12.2;   % Alfven-wave Forcing Strength, sigma=0 turns off forcing
+sigma_A = 12;   % Alfven-wave Forcing Strength, sigma=0 turns off forcing
 sigma_S = 1;   % Slow-mode Forcing Strength
 % Filter for forcing, k2filter, is defined in initial condition
 init_energy = 0;
@@ -45,10 +45,14 @@ LX = 1;     % Box-size (x-direction)
 LY = 1;     % Box-size (y-direction)
 LZ = 1;     % Box-size (z-direction)
 
-NX = 128;       % Resolution in x
-NY = 128;       % Resolution in y
-NZ = 128;       % Resolution in z
+NX = 16;       % Resolution in x
+NY = NX;       % Resolution in y
+NZ = NX;       % Resolution in z
 N  = NX*NY*NZ;
+
+if SaveOutput == 0
+    disp('!!! Output is NOT being saved !!!')
+end
 
 if VariableTimeStep == 1
     time         = zeros(1, Cutoff+1);    % +1 accounts for t=0 (incase we reach the cutoff)
@@ -61,7 +65,7 @@ if VariableTimeStep == 1
     end
 %     E_zp_diss    = zeros(1, Cutoff);
 %     E_zm_diss    = zeros(1, Cutoff);
-    
+
 else
     time = dt:dt:TF;
     
@@ -87,7 +91,7 @@ t=0.0;
 
 % Scale nu according to mesh resolution
 if HyperViscosity == 1
-    nu = nu6*(128/NX)^(16/3);
+    nu = nu6*(32/NX)^(16/3);
 else
     nu = nu2*(128/NX)^(4/3);
 end
@@ -197,7 +201,7 @@ n=1;
 while t<TF && n<Cutoff
     k=k+1;
     l=l+1;
-    
+
     if VariableTimeStep == 1
         %% Update time-step
         
@@ -236,7 +240,7 @@ while t<TF && n<Cutoff
             exp_correct = exp(dt*nu*k2);
         end
     end
-    
+
     %%% Update zeta p/m for new time-step
     z_plus = Lap_z_plus./k2_poisson;
     z_minus = Lap_z_minus./k2_poisson;
@@ -274,7 +278,7 @@ while t<TF && n<Cutoff
         PB_zm_sp  = fftn((zm_x.*sp_y)  - (zm_y.*sp_x));
         PB_zm_sm  = fftn((zm_x.*sm_y)  - (zm_y.*sm_x));
     end
-    
+
     NL_z_Sup = -(0.5).*(PB_zp_Lzm + PB_zm_Lzp).*dealias;
     NL_z_Lap = -(0.5).*k2_perp.*PB_zp_zm.*dealias;
     NL_z_plus  = NL_z_Sup - NL_z_Lap;
@@ -284,6 +288,7 @@ while t<TF && n<Cutoff
         NL_s_plus   = -(0.5).*((1-bpar).*PB_zp_sp + (1+bpar).*PB_zm_sp).*dealias;
         NL_s_minus  = -(0.5).*((1+bpar).*PB_zp_sm + (1-bpar).*PB_zm_sm).*dealias;
     end
+    
     %%% Compute Linear terms
     
     Lin_z_plus  =   va.*KZ.*Lap_z_plus;
@@ -293,9 +298,9 @@ while t<TF && n<Cutoff
         Lin_s_plus     =  (va*bpar).*KZ.*s_plus;
         Lin_s_minus    = -(va*bpar).*KZ.*s_minus;
     end
-    
+
     %%% Forcing %%%
-    
+
     if sigma_A>0
         force_Ap = k2filter.*fftn(randn(NX,NY,NZ));
         force_Am = k2filter.*fftn(randn(NX,NY,NZ));
@@ -315,7 +320,7 @@ while t<TF && n<Cutoff
     else
         force_Sp=0;force_Sm=0;
     end
-    
+
     %%% Compute Solution at the next step %%%
     
     Lap_z_plus_new  = dt*(Lin_z_plus + NL_z_plus) + Lap_z_plus + force_Ap*sqrt(dt); 
@@ -333,7 +338,7 @@ while t<TF && n<Cutoff
     end
     
     %%% Conserved Quantities %%%
-    
+   
     E_z_plus_grid  = (abs(Lap_z_plus_new).^2)./abs(k2_poisson);
     E_z_minus_grid = (abs(Lap_z_minus_new).^2)./abs(k2_poisson);
     
@@ -353,7 +358,7 @@ while t<TF && n<Cutoff
         E_s_plus(n)     = (0.5)*sum(E_s_plus_grid(:))*(grid_int);
         E_s_minus(n)    = (0.5)*sum(E_s_minus_grid(:))*(grid_int);
     end
-             
+
     t=t+dt;
     
 %% Plotting %%%
@@ -385,7 +390,6 @@ while t<TF && n<Cutoff
 %% Save Output %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     if l == TOutput && SaveOutput == 1   % To save a new variable simply add line, "output.variable = variable"
         m=m+1;  % Output counter
-        
         output.time = t;
         if VariableTimeStep == 1
             output.timevec = time;

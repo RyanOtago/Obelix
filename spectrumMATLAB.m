@@ -4,7 +4,7 @@ function spectrumMATLAB()
 
 %%% Data Directory %%%
 Directory = './Turbulence/';
-Folder    = '2020-05-28 15-07-08/';
+Folder    = '2020-06-18 15-54-17/';
 
 filename = @(n) [Directory Folder sprintf('%u',n) '.mat'];
 
@@ -39,10 +39,10 @@ fields = {'Lzp','Lzm','EK', 'KX', 'KY'};
 
 %%% Initialise Plot %%%
 set(gcf, 'Units', 'Normalized', 'OuterPosition', [0.5, 0.4, 0.3, 0.6]);
-loglog(S.kgrid, S.kgrid.^(-5/3),'k:')
+loglog(S.kgrid, 100*S.kgrid.^(-5/3),'b:')
 
 %%% Calculate Spectra %%%
-for nn = 1:50:Nfiles
+for nn = 1:Nfiles
     clear('S.EK')
     for var = fields;S.(var{1}) = 0;end
     
@@ -55,9 +55,9 @@ for nn = 1:50:Nfiles
     end
     
     for var = {'KX', 'KY'}
-        zp = D.output.Lzp./k2_poisson;
-        zm = D.output.Lzm./k2_poisson;
-        uperp = (0.5)*input.(var{1}).*(zp + zm);
+        zp = D.output.Lzp./sqrt(k2_poisson);
+        zm = D.output.Lzm./sqrt(k2_poisson);
+        uperp = (0.5)*input.(var{1}).*(zp + zm);        % Check wtf is going on here
         S.(var{1}) = S.(var{1}) + spect1D(uperp,uperp,Kspec,kgrid);
         S.EK = S.EK + S.(var{1})/2; % Total spectrum is the sum of each component
         S.EK = S.EK.*S.nnorm;

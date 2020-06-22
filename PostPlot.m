@@ -1,13 +1,18 @@
 function PostPlot()
 
 Directory = './Turbulence/';
-Folder    = '2020-06-05 16-21-51/';
+Folder    = '2020-06-17 16-09-08/';
 
-PlotChoice    = 2;      % 1 for Energy v Time of run;  2 for visualisation of zeta^p/m
+filename = @(n) [Directory Folder sprintf('%u',n) '.mat'];
 
+PlotChoice    = 1;      % 1 for Energy v Time of run;  2 for visualisation of zeta^p/m
+
+Dinit = dir([Directory Folder '*.mat']);
+Nfiles = length(Dinit)-1;       % '-1' accounts for 0.mat
 SinglePlot    = 1;      % Want to change this as quickly as possible
 if SinglePlot == 1
-    Number = 293;       % Chooose single file you want to plot figures for
+    
+    Number = Nfiles;       % Plots most recent *.mat file in 'Directory'
 end
 Fullscreen    = 1;
 
