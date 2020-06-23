@@ -11,7 +11,7 @@ TF               = 10;        % Final Time
 NormalisedEnergy = 0;         % Scales initial condition so u_perp ~ B_perp ~ 1
 HyperViscosity   = 1;         % Use nu*(k^6) instead of nu*(k^2) for dissipation
 
-SaveOutput       = 0;         % Writes energies, u and B components for each time step to a .mat file
+SaveOutput       = 1;         % Writes energies, u and B components for each time step to a .mat file
 TOutput          = 1000;       % Number of iterations before output
 OutputDirectory  = './Turbulence';   % Directory .mat file above is saved to
 
@@ -25,7 +25,7 @@ CFL              = 0.13;      % Courant Number
 dt               = 1e-4;      % Time Step (For fixed time step runs)
 
 % PLOTTING
-TScreen          = 0;         % Screen Update Interval Count (NOTE: plotting is usually slow) (Set to 0 for no plotting)
+TScreen          = 100;         % Screen Update Interval Count (NOTE: plotting is usually slow) (Set to 0 for no plotting)
 Fullscreen       = 0;         % Makes plot figure fullscreen (Recommended if saving plots) !!! Forces figure to foreground through run !!!
 SavePlot         = 0;         % Saves figure as a .jpg file everytime a new plot is created
 PlotDirectory    = './gif/';  % Directory the plot is saved to
@@ -36,7 +36,7 @@ va   = 1;      % Alfven velocity
 nu2   = 0.036;          % Viscosity coefficient for N = 128                         %%%% I think these coefficients need adjusting?
 nu6 = 2e-10;    % Hyperviscosity coefficient for N = 32        (1/180)*2e-10
 beta = 1;      % c_s/v_A
-sigma_A = 12;   % Alfven-wave Forcing Strength, sigma=0 turns off forcing
+sigma_A = 12.2;   % Alfven-wave Forcing Strength, sigma=0 turns off forcing
 sigma_S = 1;   % Slow-mode Forcing Strength
 % Filter for forcing, k2filter, is defined in initial condition
 init_energy = 0;
@@ -45,7 +45,7 @@ LX = 1;     % Box-size (x-direction)
 LY = 1;     % Box-size (y-direction)
 LZ = 1;     % Box-size (z-direction)
 
-NX = 16;       % Resolution in x
+NX = 32;       % Resolution in x
 NY = NX;       % Resolution in y
 NZ = NX;       % Resolution in z
 N  = NX*NY*NZ;
@@ -408,6 +408,9 @@ while t<TF && n<Cutoff
             output.Esp = E_s_plus;
             output.Esm = E_s_minus;
         end
+        
+        output.Ezp_diss = E_zp_diss;
+        output.Exm_diss = E_zm_diss;
         
         save([OutputDirectory '/' RunFolder '/' num2str(m)], 'output')
         l=0;
