@@ -1,8 +1,8 @@
 %% Data Directory %%%
 Directory = './Turbulence/';
-Folder    = '2020-07-06 16-05-33/';
-Number = 193;     % Number of file we're looking at
-
+Folder    = '2020-07-06 16-16-28/';
+Number = 275;     % Number of file we're looking at
+rng('shuffle')
 filename = @(n) [Directory Folder sprintf('%u',n) '.mat'];
 
 %% Read initialdata from 0.mat %%%
@@ -36,8 +36,8 @@ Lap_z_minus = output.Lzm;
 t = output.time;
 
 try
-    s_plus  = output.sp;
-    s_minus = output.sm;
+    s_plus  = randn(size(Lap_z_plus));%output.sp;
+    s_minus = randn(size(Lap_z_plus));%output.sm;
 catch
     SlowModes = 0;
     s_plus  = 0;
@@ -65,7 +65,8 @@ L = [LX, LY, LZ];
 
 % Coefficient Magnitudes
 % XiMag_line  = rms(delR_line)./rms(delB_line);
-ChiMag_line = rms(delU_line)./rms(delB_line);
+% ChiMag = rms(delU_line)./rms(delB_line);
+% ChiMagWT = cwt(delU_line)./cwt(delB_line);
 % PsiMag_line = rms(delP_line)./rms(delB_line);
 % plot(abs(ChiMag_line))
 % Coefficient Phases
@@ -96,7 +97,7 @@ periodsmall = period(smallscale);
 UBphase = angle(wcsUBsmall);
 bins = linspace(-pi, pi, 51);
 % histUB = zeros(51, length(smallscale));
-figure
+% figure
 hold on
 for i = smallscale'
     disp(i)
@@ -106,7 +107,7 @@ for i = smallscale'
     histUB = histUB./max(histUB);
     barh(bins,histUB) 
     drawnow
-    pause(0.5)
+    pause(0.1)
 end
 % figure
 % subplot(1,2,1)
@@ -129,7 +130,7 @@ function [out, lvec] = Interpolate(delA, dx, LX, lstart, i, j, k, L, ldir)
 
 ldir = ldir/norm(ldir); % Direction along which to look
 dl = dx;
-total_length = 10000*LX^2 ;
+total_length = 1000*LX^2 ;
 lvec = [(-total_length/2):dl:(total_length/2 -dl)];
 clear plist
 plist = zeros(1,length(lvec));

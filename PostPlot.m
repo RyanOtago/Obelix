@@ -1,26 +1,22 @@
 function PostPlot()
-
+clear all
 Directory = './Turbulence/';
-Folder    = '2020-06-17 16-09-08/';
+Folder    = '2020-07-06 16-08-44/';
 
 filename = @(n) [Directory Folder sprintf('%u',n) '.mat'];
 
 PlotChoice    = 1;      % 1 for Energy v Time of run;  2 for visualisation of zeta^p/m
 
-Dinit = dir([Directory Folder '*.mat']);
-Nfiles = length(Dinit)-1;       % '-1' accounts for 0.mat
-SinglePlot    = 1;      % Want to change this as quickly as possible
-if SinglePlot == 1
-    
-    Number = Nfiles;       % Plots most recent *.mat file in 'Directory'
-end
+
+Nfiles = length(dir([Directory Folder '*.mat']))-1;       % '-1' accounts for 0.mat
+Number = Nfiles;       % Plots most recent *.mat file in 'Directory' Change to an integer less than Nfiles for any other saved 'snapshot' in directory
+
 Fullscreen    = 1;
 
 SavePlot      = 0;
 PlotDirectory    = './';  % Directory the plot is saved to
 
 filename = @(n) [Directory Folder sprintf('%u',n) '.mat'];
-
 %% Loading Parameters from 0.mat
 Init0 = load(filename(0));
 input = Init0.input;
@@ -28,7 +24,7 @@ SlowModes = input.Parameters.SlowModes;
 
 VariableTimeStep = input.Parameters.VariableTimeStep;
 if VariableTimeStep == 0
-    dt = input.dtFixed;
+    dt = input.Parameters.dtFixed;
 end
 
 if PlotChoice == 2                % Visualisation Information
@@ -71,8 +67,12 @@ if PlotChoice == 1      %%% Energy Plot
     else
         TSlice = output.time;
         t = dt:dt:TSlice;
+        Esp = output.Esp;
+        Esm = output.Esm;
+        Esp = Esp(1:length(t));
+        Esm = Esm(1:length(t));
     end
-    
+
     if SlowModes == 1
         EnergyPlot(Ezp, Ezm, t, TSlice, SlowModes, Esp, Esm)    % Make sure to include drawnow inside function
     else
@@ -144,11 +144,11 @@ if Fullscreen == 1
     set(gcf, 'Units', 'Normalized', 'OuterPosition', [0, 0.04, 1, 0.96])        % Makes figure fullscreen
 end
 clf
-if SlowModes == 1
-    subplot(2,2,1)
-else
-    subplot(1,2,1)
-end
+% if SlowModes == 1
+%     subplot(2,2,1)
+% else
+%     subplot(1,2,1)
+% end
 hold on
 hx = slice(XG, YG, ZG, zp, LX, [], []);
 set(hx,'FaceColor','interp','EdgeColor','none')
@@ -169,77 +169,77 @@ ylabel('y')
 zlabel('z')
 colorbar
 
-if SlowModes == 1
-    subplot(2,2,2)
-else
-    subplot(1,2,2)
-end
-hold on
-hx = slice(XG, YG, ZG, zm, LX, [], []);
-set(hx,'FaceColor','interp','EdgeColor','none')
-hy = slice(XG, YG, ZG, zm, [], dy, []);
-set(hy,'FaceColor','interp','EdgeColor','none')
-hz = slice(XG, YG, ZG, zm, [], [], LZ);
-set(hz,'FaceColor','interp','EdgeColor','none')
-hold off
-daspect([1,1,1])
-axis tight
-box on
-view(42,16)
-camproj perspective
-set(gcf,'Renderer','zbuffer')
-title('\zeta^-')
-xlabel('x')
-ylabel('y')
-zlabel('z')
-colorbar
-
-if SlowModes == 1
-    subplot(2,2,3)
-    hold on
-    hx = slice(XG, YG, ZG, sp, LX, [], []);
-    set(hx,'FaceColor','interp','EdgeColor','none')
-    hy = slice(XG, YG, ZG, sp, [], dy, []);
-    set(hy,'FaceColor','interp','EdgeColor','none')
-    hz = slice(XG, YG, ZG, sp, [], [], LZ);
-    set(hz,'FaceColor','interp','EdgeColor','none')
-    hold off
-    
-    daspect([1,1,1])
-    axis tight
-    box on
-    view(42,16)
-    camproj perspective
-    set(gcf,'Renderer','zbuffer')
-    title('z^+')
-    xlabel('x')
-    ylabel('y')
-    zlabel('z')
-    colorbar
-    
-    subplot(2,2,4)
-    hold on
-    hx = slice(XG, YG, ZG, sm, LX, [], []);
-    set(hx,'FaceColor','interp','EdgeColor','none')
-    hy = slice(XG, YG, ZG, sm, [], dy, []);
-    set(hy,'FaceColor','interp','EdgeColor','none')
-    hz = slice(XG, YG, ZG, sm, [], [], LZ);
-    set(hz,'FaceColor','interp','EdgeColor','none')
-    hold off
-    
-    daspect([1,1,1])
-    axis tight
-    box on
-    view(42,16)
-    camproj perspective
-    set(gcf,'Renderer','zbuffer')
-    title('z^-')
-    xlabel('x')
-    ylabel('y')
-    zlabel('z')
-    colorbar
-end
-drawnow
+% if SlowModes == 1
+%     subplot(2,2,2)
+% else
+%     subplot(1,2,2)
+% end
+% hold on
+% hx = slice(XG, YG, ZG, zm, LX, [], []);
+% set(hx,'FaceColor','interp','EdgeColor','none')
+% hy = slice(XG, YG, ZG, zm, [], dy, []);
+% set(hy,'FaceColor','interp','EdgeColor','none')
+% hz = slice(XG, YG, ZG, zm, [], [], LZ);
+% set(hz,'FaceColor','interp','EdgeColor','none')
+% hold off
+% daspect([1,1,1])
+% axis tight
+% box on
+% view(42,16)
+% camproj perspective
+% set(gcf,'Renderer','zbuffer')
+% title('\zeta^-')
+% xlabel('x')
+% ylabel('y')
+% zlabel('z')
+% colorbar
+% 
+% if SlowModes == 1
+%     subplot(2,2,3)
+%     hold on
+%     hx = slice(XG, YG, ZG, sp, LX, [], []);
+%     set(hx,'FaceColor','interp','EdgeColor','none')
+%     hy = slice(XG, YG, ZG, sp, [], dy, []);
+%     set(hy,'FaceColor','interp','EdgeColor','none')
+%     hz = slice(XG, YG, ZG, sp, [], [], LZ);
+%     set(hz,'FaceColor','interp','EdgeColor','none')
+%     hold off
+%     
+%     daspect([1,1,1])
+%     axis tight
+%     box on
+%     view(42,16)
+%     camproj perspective
+%     set(gcf,'Renderer','zbuffer')
+%     title('z^+')
+%     xlabel('x')
+%     ylabel('y')
+%     zlabel('z')
+%     colorbar
+%     
+%     subplot(2,2,4)
+%     hold on
+%     hx = slice(XG, YG, ZG, sm, LX, [], []);
+%     set(hx,'FaceColor','interp','EdgeColor','none')
+%     hy = slice(XG, YG, ZG, sm, [], dy, []);
+%     set(hy,'FaceColor','interp','EdgeColor','none')
+%     hz = slice(XG, YG, ZG, sm, [], [], LZ);
+%     set(hz,'FaceColor','interp','EdgeColor','none')
+%     hold off
+%     
+%     daspect([1,1,1])
+%     axis tight
+%     box on
+%     view(42,16)
+%     camproj perspective
+%     set(gcf,'Renderer','zbuffer')
+%     title('z^-')
+%     xlabel('x')
+%     ylabel('y')
+%     zlabel('z')
+%     colorbar
+% end
+% drawnow
 
 if SavePlot == 1
     saveas(gcf, [PlotDirectory num2str(t) '.jpg'])
