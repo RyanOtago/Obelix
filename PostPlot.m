@@ -1,11 +1,11 @@
 function PostPlot()
 clear all
 Directory = './Turbulence/';
-Folder    = '2020-07-06 16-08-44/';
+Folder    = '2020-07-24 11-42-40/';
 
 filename = @(n) [Directory Folder sprintf('%u',n) '.mat'];
 
-PlotChoice    = 1;      % 1 for Energy v Time of run;  2 for visualisation of zeta^p/m
+PlotChoice    = 2;      % 1 for Energy v Time of run;  2 for visualisation of zeta^p/m
 
 
 Nfiles = length(dir([Directory Folder '*.mat']))-1;       % '-1' accounts for 0.mat

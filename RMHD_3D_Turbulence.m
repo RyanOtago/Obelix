@@ -8,7 +8,7 @@ profile on
 %% Options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 SlowModes        = 1;         % Calculate evolution of compressive modes in run
 TF               = 10;        % Final Time
-NormalisedEnergy = 0;         % Scales initial condition so u_perp ~ B_perp ~ 1
+NormalisedEnergy = 1;         % Scales initial condition to have energy init_energy defined in Parameters
 HyperViscosity   = 1;         % Use nu*(k^6) instead of nu*(k^2) for dissipation
 
 SaveOutput       = 1;         % Writes energies, u and B components for each time step to a .mat file
@@ -17,12 +17,21 @@ OutputDirectory  = './Turbulence';   % Directory .mat file above is saved to
 
 % Time step
 VariableTimeStep = 1;         % Enable variable time step, else dt must be defined below
-% Variable
+
+if VariableTimeStep == 0
+    disp('CAUTION: Non-variable time-step chosen!')
+end
+% Variable dt
 Cutoff           = 1000000;   % Maximum number of iterations for variable time step
 dtCutoff         = 1e-6;      % If dt gets smaller than dtCutoff, run will stop
-CFL              = 0.13;      % Courant Number
-% Fixed
+CFL              = 0.3;      % Courant Number
+% Fixed dt
 dt               = 1e-4;      % Time Step (For fixed time step runs)
+
+% Restart
+% Uses 'RestartFile' as initial condition
+Restart = 1;
+RestartFolder = './Turbulence/2020-07-06 16-08-44/';
 
 % PLOTTING
 TScreen          = 0;         % Screen Update Interval Count (NOTE: plotting is usually slow) (Set to 0 for no plotting)
@@ -35,11 +44,12 @@ EnergyPlot       = 0;         % Plots energy when run has completed
 va   = 1;      % Alfven velocity
 nu2   = 0.036;          % Viscosity coefficient for N = 128                         %%%% I think these coefficients need adjusting?
 nu6 = 2e-10;    % Hyperviscosity coefficient for N = 32        (1/180)*2e-10
-beta = 10;      % c_s/v_A
-sigma_A = 12.2;   % Alfven-wave Forcing Strength, sigma=0 turns off forcing
+beta = 0.01;      % c_s/v_A
+sigma_A = 12.1;   % Alfven-wave Forcing Strength, sigma=0 turns off forcing (12.3)
 sigma_S = 1;   % Slow-mode Forcing Strength
 % Filter for forcing, k2filter, is defined in initial condition
-init_energy = 0;
+init_energy = 1;
+rng('shuffle')
 
 LX = 1;     % Box-size (x-direction)
 LY = 1;     % Box-size (y-direction)
@@ -63,8 +73,8 @@ if VariableTimeStep == 1
         E_s_plus     = zeros(1, Cutoff);
         E_s_minus    = zeros(1, Cutoff);
     end
-%     E_zp_diss    = zeros(1, Cutoff);
-%     E_zm_diss    = zeros(1, Cutoff);
+    E_zp_diss    = zeros(1, Cutoff);
+    E_zm_diss    = zeros(1, Cutoff);
 
 else
     time = dt:dt:TF;
@@ -75,8 +85,8 @@ else
         E_s_plus     = zeros(1, length(time));
         E_s_minus    = zeros(1, length(time));
     end
-%     E_zp_diss    = zeros(1, length(time));
-%     E_zm_diss    = zeros(1, length(time));
+    E_zp_diss    = zeros(1, length(time));
+    E_zm_diss    = zeros(1, length(time));
 end
 
 dx = LX/NX;
@@ -113,7 +123,7 @@ k6 = k2.^3;
 kperpmax = max([abs(kx) abs(ky)]);
 kzmax    = max(abs(kz));
 
-
+dt = CFL/(va*kzmax);
 if VariableTimeStep == 0
     if HyperViscosity == 1
         exp_correct = exp(dt*nu*k6);
@@ -166,7 +176,42 @@ if NormalisedEnergy == 1
     Lap_z_plus  = sqrt(k2_perp).*kz_plus;
     Lap_z_minus = sqrt(k2_perp).*kz_minus;
 end
+%% Restart previous simulation
+if Restart == 1
+    filename = @(n) [RestartFolder sprintf('%u',n) '.mat'];
+    Nfiles = length(dir([RestartFolder '*.mat']))-1;
+    
+    % Load parameters from "RestartFolder/0.mat"
+    Init0 = load(filename(0));
+    input = Init0.input;
+    SlowModes = input.Parameters.SlowModes;
+    beta = input.Parameters.beta;
+    
+    KX = input.KX; KY = input.KY; KZ = input.KZ;
+    NX = input.Parameters.NX; NY = input.Parameters.NY; NZ = input.Parameters.NZ;
+    LX = input.Parameters.LX; LY = input.Parameters.LY; LZ = input.Parameters.LZ;
+    
+    dx = LX/NX; dy = LY/NY; dz = LZ/NZ;
+    
+    k2_perp = KX.^2 + KY.^2;      % (Perpendicular) Laplacian in Fourier space
+    k2_poisson = k2_perp; k2_poisson(1,1,:) = 1;
+    
+    [i,j,k] = ndgrid((1:NX)*dx,(1:NY)*dy,(1:NZ)*dz);
+    XG = permute(i, [2 1 3]); YG = permute(j, [2 1 3]); ZG = permute(k, [2 1 3]);
+    
+    
+    % Loading Data from "Nfiles.mat"
+    Init1 = load(filename(Nfiles));
+    output = Init1.output;
+    
+    Lap_z_plus  = output.Lzp;
+    Lap_z_minus = output.Lzm;
+    
+    s_plus  = output.sp;
+    s_minus = output.sm;
 
+    disp(['Restarting from' RestartFolder])
+end
 
 if SaveOutput == 1
     m=0;
@@ -183,7 +228,7 @@ if SaveOutput == 1
     end
     input.KX = KX;
     input.KY = KY;
-    input.KZ = KZ;    
+    input.KZ = KZ;
     
     Parameters = struct('va', va, 'nu', nu, 'beta', beta, 'sigma_A', sigma_A, 'sigma_S', sigma_S, 'LX', LX, 'LY', LY, 'LZ', LZ, 'NX', NX, 'NY', NY, 'NZ', NZ, 'dtFixed', dt, 'CFL', CFL, 'TF', TF, 'TOutput', TOutput, 'VariableTimeStep', VariableTimeStep, 'HyperViscosity', HyperViscosity, 'SlowModes', SlowModes);
     input.Parameters = Parameters;
@@ -201,7 +246,7 @@ n=1;
 while t<TF && n<Cutoff
     k=k+1;
     l=l+1;
-
+    
     if VariableTimeStep == 1
         %% Update time-step
         
@@ -310,17 +355,17 @@ while t<TF && n<Cutoff
     else 
         force_Ap=0;force_Am=0;
     end
-                
+
     if sigma_S>0 && SlowModes == 1
-        force_Sp = sigma_S * k2filter.*fftn(randn(NX,NY,NZ));
-        force_Sm = sigma_S * k2filter.*fftn(randn(NX,NY,NZ));
+        force_Sp = k2filter.*fftn(randn(NX,NY,NZ));
+        force_Sm = k2filter.*fftn(randn(NX,NY,NZ));
         
         force_Sp = sigma_S*(force_Sp./sqrt((sum(abs(force_Sp(:)).^2))*(grid_int)));
         force_Sm = sigma_S*(force_Sm./sqrt((sum(abs(force_Sm(:)).^2))*(grid_int)));
     else
         force_Sp=0;force_Sm=0;
     end
-
+    
     %%% Compute Solution at the next step %%%
     
     Lap_z_plus_new  = dt*(Lin_z_plus + NL_z_plus) + Lap_z_plus + force_Ap*sqrt(dt); 
@@ -373,15 +418,19 @@ while t<TF && n<Cutoff
             E_z_minusp = E_z_minus(1:length(timep));
             E_z_disspp = E_zp_diss(1:length(timep));
             E_z_dissmp = E_zm_diss(1:length(timep));
+        else
+            timep = time(2:find(E_s_plus,1,'last'));
+            E_s_plusp = E_s_plus(1:length(timep));
+            E_s_minusp = E_s_minus(1:length(timep));
         end
         
-        subplot(2,1,1)
-        plot(timep, E_z_plusp, timep, E_z_minusp)
+%         subplot(2,1,1)
+        plot(timep, E_s_plusp, timep, E_s_minusp)
         title('|\nabla_{\perp}\zeta^{\pm}|^2  "Energy"')
         legend('\zeta^+', '\zeta^-', 'Location', 'Best')
         xlabel('Time')
-        subplot(2,1,2)
-        plot(timep, E_z_disspp, timep, E_z_dissmp)
+%         subplot(2,1,2)
+%         plot(timep, E_z_disspp, timep, E_z_dissmp)
         drawnow
         
         k=0;
@@ -473,9 +522,9 @@ function PlotGrid(Lap_z_plus_new, Lap_z_minus_new, s_plus_new, s_minus_new, k2_p
         %Go back to real space for plotting
         zp  = double(permute(real(ifftn(KX.*Lap_z_plus_new./k2_poisson)),[2,1,3]));
         zm  = double(permute(real(ifftn(KX.*Lap_z_minus_new./k2_poisson)),[2,1,3]));
-        
+       
         zp = (0.5)*(zp + zm);
-%         zp = 0.5*(zp + zm);
+
         if SlowModes == 1
             sp     = double(permute(real(ifftn(s_plus_new)),[2,1,3]));
             sm     = double(permute(real(ifftn(s_minus_new)),[2,1,3]));
@@ -515,6 +564,7 @@ function PlotGrid(Lap_z_plus_new, Lap_z_minus_new, s_plus_new, s_minus_new, k2_p
         else
             subplot(1,2,2)
         end
+ 
         hold on
         hx = slice(XG, YG, ZG, zm, LX, [], []);
         set(hx,'FaceColor','interp','EdgeColor','none')
