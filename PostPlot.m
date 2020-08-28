@@ -1,7 +1,8 @@
 function PostPlot()
 clear all
 Directory = './Turbulence/';
-Folder    = '2020-07-24 11-42-40/';
+% Folder    = '2020-07-06 16-08-44/';
+Folder    = '2020-07-24 11-46-45/';
 
 filename = @(n) [Directory Folder sprintf('%u',n) '.mat'];
 
@@ -73,14 +74,19 @@ if PlotChoice == 1      %%% Energy Plot
         Esm = Esm(1:length(t));
     end
 
+%     assignin('base', 'Ezp', Ezp);
+%     assignin('base', 'Ezm', Ezm);
+%     assignin('base', 'Esp', Esp);
+%     assignin('base', 'Esm', Esm);
+%     assignin('base', 't', t);
     
     assignin('base', 'Ezp1', Ezp);
     assignin('base', 'Ezm1', Ezm);
     assignin('base', 'Esp1', Esp);
     assignin('base', 'Esm1', Esm);
     assignin('base', 't1', t);
-    
-    EnergyPlot(Ezp, Ezm, t, TSlice, SlowModes, Esp, Esm)
+%     
+%     EnergyPlot(Ezp, Ezm, t, TSlice, SlowModes, Esp, Esm)
     
 elseif PlotChoice == 2  %%% Visualisation
     Lap_z_plus  = output.Lzp;
