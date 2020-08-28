@@ -65,10 +65,10 @@ for stnn = 1:length(strengthpx)
                 k2 = k2_perp + KZ.^2;         % Laplacian in F.S.
                 kperpmax = max([abs(kx) abs(ky)]);
                 kzmax    = max(abs(kz));
-                dt = min([CFL/kzmax TF/1e4]);
+%                 dt = min([CFL/kzmax TF/1e4]);
 %                 disp([TF dt])
 %                 dt = TF/1e4
-                exp_correct = exp(dt*nu*k2);  % Romain thinks k2 %%%                        !!! Can include linear term !!!
+%                 exp_correct = exp(dt*nu*k2);  % Romain thinks k2 %%%                        !!! Can include linear term !!!
                 
                 %% Initial Condition %%%%%%%%%%%%%%%%%%%%%%%%%%%
                 
@@ -90,11 +90,48 @@ for stnn = 1:length(strengthpx)
                 k=1;
                 n=1;
                 m=0;
-                               
+                
                 %%% Compute Poisson Brackets
                 
                 while t<TF && n<Cutoff
-      
+                    
+                    %% Update time-step
+                    
+                    phi = abs((0.5)*(Lap_z_plus + Lap_z_minus)./k2_poisson);
+                    phi_x = real(ifftn(KX.*phi));    % y component of u_perp
+                    phi_y = real(ifftn(KY.*phi));    %-x component of u_perp
+                    
+                    u_perp = sqrt((phi_x).^2 + (phi_y).^2);
+                    u_time = abs(u_perp);
+                    
+                    psi = abs((0.5)*(Lap_z_plus - Lap_z_minus)./k2_poisson);
+                    psi_x = real(ifftn(KX.*psi));    % y component of b_perp
+                    psi_y = real(ifftn(KY.*psi));    %-x component of b_perp
+                    
+                    va_perp = sqrt(psi_x.^2 + psi_y.^2);
+                    va_time = abs(va_perp);
+                    
+                    gamma_NL = kperpmax.*(u_time + va_time);
+                    gamma_L  = kzmax*va;
+                    dt_grid = CFL./(gamma_NL + gamma_L);
+                    
+                    dt = min(dt_grid(:));
+                    
+                    if dt<dtCutoff
+                        disp(['Time step got too small at t = ' num2str(t)])
+                        disp('Stopping run...')
+                        return
+                    end
+                    
+                    dt_save(n) = dt;
+                    time(n+1)  = time(n) + dt;
+                    
+                    if HyperViscosity == 1
+                        exp_correct = exp(dt*nu*k6);
+                    else
+                        exp_correct = exp(dt*nu*k2);
+                    end
+                    
                     sp_x  = real(ifftn(KX.*s_plus));
                     sm_x  = real(ifftn(KX.*s_minus));
                     sp_y  = real(ifftn(KY.*s_plus));

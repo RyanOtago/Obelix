@@ -5,7 +5,7 @@ Folder    = '2020-07-24 11-42-40/';
 
 filename = @(n) [Directory Folder sprintf('%u',n) '.mat'];
 
-PlotChoice    = 2;      % 1 for Energy v Time of run;  2 for visualisation of zeta^p/m
+PlotChoice    = 1;      % 1 for energy v time of run;  2 for visualisation of zeta^p/m
 
 
 Nfiles = length(dir([Directory Folder '*.mat']))-1;       % '-1' accounts for 0.mat
@@ -73,11 +73,14 @@ if PlotChoice == 1      %%% Energy Plot
         Esm = Esm(1:length(t));
     end
 
-    if SlowModes == 1
-        EnergyPlot(Ezp, Ezm, t, TSlice, SlowModes, Esp, Esm)    % Make sure to include drawnow inside function
-    else
-        EnergyPlot(Ezp, Ezm, t, TSlice, SlowModes, Esp, Esm)
-    end
+    
+    assignin('base', 'Ezp1', Ezp);
+    assignin('base', 'Ezm1', Ezm);
+    assignin('base', 'Esp1', Esp);
+    assignin('base', 'Esm1', Esm);
+    assignin('base', 't1', t);
+    
+    EnergyPlot(Ezp, Ezm, t, TSlice, SlowModes, Esp, Esm)
     
 elseif PlotChoice == 2  %%% Visualisation
     Lap_z_plus  = output.Lzp;
@@ -110,6 +113,7 @@ if SlowModes == 1
     title('\zeta^{\pm} "Energy"')
     legend('\zeta^+', '\zeta^-', 'Location', 'Best')
     xlabel('Time')
+
     axis([0 TSlice 0 1.1*max([Ezp Ezm])])
     
     subplot(1,2,2)

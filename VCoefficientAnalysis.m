@@ -1,7 +1,7 @@
 %% Data Directory %%%
 Directory = './Turbulence/';
-Folder    = '2020-07-06 16-16-28/';
-Number = 275;     % Number of file we're looking at
+Folder    = '';%'2020-07-24 11-46-45/';
+Number = 98;     % Number of file we're looking at
 rng('shuffle')
 filename = @(n) [Directory Folder sprintf('%u',n) '.mat'];
 
@@ -36,8 +36,8 @@ Lap_z_minus = output.Lzm;
 t = output.time;
 
 try
-    s_plus  = randn(size(Lap_z_plus));%output.sp;
-    s_minus = randn(size(Lap_z_plus));%output.sm;
+    s_plus  = output.sp; %randn(size(Lap_z_plus));
+    s_minus = output.sm; %randn(size(Lap_z_plus));
 catch
     SlowModes = 0;
     s_plus  = 0;
@@ -55,11 +55,11 @@ delR = -(1/beta^2)*delB;                                      % Density
 delP =  gamma*delR;                                           % Pressure
 
 %% Linear Interpolation
-lstart = [0.8 0.5 0.5];
+lstart = [0.4 0.5 0.5];
 ldir = [-0.1 sqrt(0.2) (pi^2)]; 
 L = [LX, LY, LZ];
-[delU_line, length_line] = Interpolate(delU, dx, LX, lstart, ip, jp, kp, L, ldir);
-[delB_line, length_line] = Interpolate(delB, dx, LX, lstart, ip, jp, kp, L, ldir);
+% [delU_line, length_line] = Interpolate(delU, dx, LX, lstart, ip, jp, kp, L, ldir);
+% [delB_line, length_line] = Interpolate(delB, dx, LX, lstart, ip, jp, kp, L, ldir);
 % [delR_line, length_line] = Interpolate(delR, dx, LX, lstart, ip, jp, kp, L, ldir);
 % [delP_line, length_line] = Interpolate(delP, dx, LX, lstart, ip, jp, kp, L, ldir);
 
@@ -84,21 +84,22 @@ L = [LX, LY, LZ];
 % Plot of Wavelet Coherence
 % wcoherence(delU_line,delB_line, seconds(dx), 'PhaseDisplayThreshold', 0.5)
 % wcoherence(delU_line,delB_line, 'PhaseDisplayThreshold', 0.2);
-[wcohUB, wcsUB, period, coi] = wcoherence(delU_line,delB_line, seconds(dx), 'PhaseDisplayThreshold', 0.2);
+% axis([])
+% [wcohUB, wcsUB, period, coi] = wcoherence(delU_line,delB_line, seconds(dx), 'PhaseDisplayThreshold', 0.2);
 
 % Trim off scales larger than LX/2 to avoid measuring coherence of 'same
 % point'
-period = seconds(period);
-smallscale = find(period<(LX/2));
-wcsUBsmall = wcsUB(smallscale, :);
-wcohUBsmall = wcohUB(smallscale, :);
-periodsmall = period(smallscale);
-
-UBphase = angle(wcsUBsmall);
-bins = linspace(-pi, pi, 51);
-% histUB = zeros(51, length(smallscale));
-% figure
-hold on
+% period = seconds(period);
+% smallscale = find(period<(LX/2));
+% wcsUBsmall = wcsUB(smallscale, :);
+% wcohUBsmall = wcohUB(smallscale, :);
+% periodsmall = period(smallscale);
+% 
+% UBphase = angle(wcsUBsmall);
+% bins = linspace(-pi, pi, 51);
+% % histUB = zeros(51, length(smallscale));
+% % figure
+% hold on
 for i = smallscale'
     disp(i)
     UBphasei = UBphase(i,:);
@@ -130,7 +131,7 @@ function [out, lvec] = Interpolate(delA, dx, LX, lstart, i, j, k, L, ldir)
 
 ldir = ldir/norm(ldir); % Direction along which to look
 dl = dx;
-total_length = 1000*LX^2 ;
+total_length = 10000*LX^2 ;
 lvec = [(-total_length/2):dl:(total_length/2 -dl)];
 clear plist
 plist = zeros(1,length(lvec));

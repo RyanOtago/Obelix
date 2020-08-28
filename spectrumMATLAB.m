@@ -4,11 +4,11 @@ function spectrumMATLAB()
 
 %%% Data Directory %%%
 Directory = './Turbulence/';
-Folder    = '2020-06-18 15-54-17/';
+Folder    = '2020-07-06 16-06-35/';
 
 filename = @(n) [Directory Folder sprintf('%u',n) '.mat'];
 
-%%% Read initialdata from 0.mat %%%
+%%% Read initial data from 0.mat %%%
 Dinit = dir([Directory Folder '*.mat']);
 Nfiles = length(Dinit)-1;       % '-1' accounts for 0.mat
 
@@ -38,11 +38,12 @@ S.EK = 0;
 fields = {'Lzp','Lzm','EK', 'KX', 'KY'};
 
 %%% Initialise Plot %%%
+figure
 set(gcf, 'Units', 'Normalized', 'OuterPosition', [0.5, 0.4, 0.3, 0.6]);
 loglog(S.kgrid, 100*S.kgrid.^(-5/3),'b:')
 
 %%% Calculate Spectra %%%
-for nn = 1:Nfiles
+for nn = 1:10:Nfiles
     clear('S.EK')
     for var = fields;S.(var{1}) = 0;end
     
