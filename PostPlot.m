@@ -1,16 +1,16 @@
 function PostPlot()
-clear all
-Directory = './Turbulence/';
+
+Directory = './Turbulence/Beta1/';
 % Folder    = '2020-07-06 16-08-44/';
-Folder    = '2020-07-24 11-46-45/';
+Folder    = '2020-07-24 11-44-49//';
 
 filename = @(n) [Directory Folder sprintf('%u',n) '.mat'];
 
-PlotChoice    = 1;      % 1 for energy v time of run;  2 for visualisation of zeta^p/m
+PlotChoice    = 2;      % 1 for energy v time of run;  2 for visualisation of zeta^p/m
 
 
 Nfiles = length(dir([Directory Folder '*.mat']))-1;       % '-1' accounts for 0.mat
-Number = Nfiles;       % Plots most recent *.mat file in 'Directory' Change to an integer less than Nfiles for any other saved 'snapshot' in directory
+Number = 200;       % Plots most recent *.mat file in 'Directory' Change to an integer less than Nfiles for any other saved 'snapshot' in directory
 
 Fullscreen    = 1;
 
@@ -80,13 +80,13 @@ if PlotChoice == 1      %%% Energy Plot
 %     assignin('base', 'Esm', Esm);
 %     assignin('base', 't', t);
     
-    assignin('base', 'Ezp1', Ezp);
-    assignin('base', 'Ezm1', Ezm);
-    assignin('base', 'Esp1', Esp);
-    assignin('base', 'Esm1', Esm);
-    assignin('base', 't1', t);
+%     assignin('base', 'Ezp1', Ezp);
+%     assignin('base', 'Ezm1', Ezm);
+%     assignin('base', 'Esp1', Esp);
+%     assignin('base', 'Esm1', Esm);
+%     assignin('base', 't1', t);
 %     
-%     EnergyPlot(Ezp, Ezm, t, TSlice, SlowModes, Esp, Esm)
+    EnergyPlot(Ezp, Ezm, t, TSlice, SlowModes, Esp, Esm)
     
 elseif PlotChoice == 2  %%% Visualisation
     Lap_z_plus  = output.Lzp;
